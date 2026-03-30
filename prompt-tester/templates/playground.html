@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playground — Prompt Tester</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1 { color: #58a6ff; margin-bottom: 20px; }
+        .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .panel h2 { color: #8b949e; font-size: 14px; text-transform: uppercase; margin-bottom: 8px; }
+        textarea { width: 100%; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; padding: 12px; font-family: 'Cascadia Code', monospace; font-size: 13px; resize: vertical; }
+        .system-area { min-height: 120px; }
+        .chat { max-height: 400px; overflow-y: auto; margin-bottom: 12px; }
+        .msg { padding: 10px 14px; margin-bottom: 8px; border-radius: 8px; }
+        .msg-user { background: #1f6feb22; border-left: 3px solid #1f6feb; }
+        .msg-assistant { background: #23863622; border-left: 3px solid #238636; }
+        .msg-role { font-size: 11px; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+        .input-row { display: flex; gap: 8px; }
+        .input-row input { flex: 1; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 10px; border-radius: 6px; font-size: 14px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-send { background: #1f6feb; color: white; }
+        .btn-send:hover { background: #388bfd; }
+        .btn-clear { background: #21262d; color: #c9d1d9; margin-left: 8px; }
+        .btn-swap { background: #21262d; color: #c9d1d9; font-size: 12px; padding: 6px 12px; }
+        .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+        select { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 10px; border-radius: 6px; }
+        .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .preset { padding: 4px 10px; background: #21262d; border: 1px solid #30363d; border-radius: 12px; font-size: 12px; cursor: pointer; color: #8b949e; }
+        .preset:hover { border-color: #58a6ff; color: #58a6ff; }
+        a { color: #58a6ff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><a href="/">Prompt Tester</a> / Playground</h1>
+
+        <div class="panel">
+            <h2>Системный промпт</h2>
+            <div class="presets" id="presets"></div>
+            <textarea class="system-area" id="systemPrompt" placeholder="Системный промпт..."></textarea>
+        </div>
+
+        <div class="panel">
+            <h2>Чат</h2>
+            <div class="controls">
+                <select id="model">
+                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                    <option value="gpt-4o">gpt-4o</option>
+                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                    <option value="gpt-4.1">gpt-4.1</option>
+                </select>
+                <button class="btn-swap" onclick="swapRole()">user/assistant</button>
+                <button class="btn btn-clear" onclick="clearChat()">Очистить чат</button>
+            </div>
+            <div class="chat" id="chat"></div>
+            <div class="input-row">
+                <input type="text" id="userInput" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMessage()">
+                <button class="btn btn-send" onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messages = [];
+        let currentRole = 'user';
+
+        // Пресеты промптов (можно расширить)
+        const presets = [
+            {name: 'Рекрутер', prompt: 'Ты — HR-бот. Квалифицируй кандидата, задавай вопросы по одному.'},
+            {name: 'Продавец', prompt: 'Ты — менеджер по продажам оконной компании. Выяви потребности клиента и предложи решение.'},
+            {name: 'Учитель', prompt: 'Ты — терпеливый учитель математики. Объясняй просто, с примерами из жизни.'},
+        ];
+
+        function renderPresets() {
+            const el = document.getElementById('presets');
+            el.innerHTML = presets.map((p, i) =>
+                `<span class="preset" onclick="document.getElementById('systemPrompt').value='${p.prompt}'">${p.name}</span>`
+            ).join('');
+        }
+
+        function renderChat() {
+            const el = document.getElementById('chat');
+            el.innerHTML = messages.map(m =>
+                `<div class="msg msg-${m.role}"><div class="msg-role">${m.role}</div>${m.content}</div>`
+            ).join('');
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function swapRole() {
+            currentRole = currentRole === 'user' ? 'assistant' : 'user';
+            document.getElementById('userInput').placeholder = `[${currentRole}] Сообщение...`;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            messages.push({role: currentRole, content: text});
+            input.value = '';
+            renderChat();
+
+            if (currentRole !== 'user') return;
+
+            // Запрос к модели
+            try {
+                const resp = await fetch('/api/playground/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        system_prompt: document.getElementById('systemPrompt').value,
+                        messages: messages,
+                        model: document.getElementById('model').value,
+                    }),
+                });
+                const data = await resp.json();
+                messages.push({role: 'assistant', content: data.response});
+                renderChat();
+            } catch(e) {
+                messages.push({role: 'assistant', content: 'Error: ' + e.message});
+                renderChat();
+            }
+        }
+
+        function clearChat() {
+            messages = [];
+            renderChat();
+        }
+
+        renderPresets();
+    </script>
+</body>
+</html>

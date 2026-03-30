@@ -1,0 +1,116 @@
+{
+  "windows_company": [
+    {
+      "name": "Happy path — замена окон",
+      "messages": [
+        {"role": "user", "content": "Здравствуйте, хочу заменить окна"},
+        {"role": "user", "content": "Двухкомнатная квартира, панельный дом, 5 этаж"},
+        {"role": "user", "content": "3 окна стандартных, двухкамерный стеклопакет, белый профиль"},
+        {"role": "user", "content": "Ок, сколько примерно?"},
+        {"role": "user", "content": "Нормально, давайте замер"},
+        {"role": "user", "content": "Иван, +7-900-123-45-67, ул. Ленина 15, завтра в 14:00"}
+      ],
+      "expected_final_state": "completed",
+      "expected_fields": {"work_type": "замена окон", "client_name": "Иван"}
+    },
+    {
+      "name": "Возражение 'дорого'",
+      "messages": [
+        {"role": "user", "content": "Нужно остекление балкона"},
+        {"role": "user", "content": "Балкон 3 метра, хрущёвка, 4 этаж"},
+        {"role": "user", "content": "Холодное остекление, алюминий"},
+        {"role": "user", "content": "Дорого, у конкурентов дешевле"}
+      ],
+      "expected_final_state": "objection",
+      "expected_fields": {"work_type": "остекление балкона"}
+    },
+    {
+      "name": "Сразу просит человека",
+      "messages": [
+        {"role": "user", "content": "Переключите на менеджера"}
+      ],
+      "expected_final_state": "handoff",
+      "expected_fields": {}
+    },
+    {
+      "name": "Неопределённые размеры",
+      "messages": [
+        {"role": "user", "content": "Хочу поменять окно"},
+        {"role": "user", "content": "Одно окно на кухне, не знаю размеры"},
+        {"role": "user", "content": "Кирпичный дом, 2 этаж"}
+      ],
+      "expected_final_state": "dimensions",
+      "expected_fields": {"work_type": "замена окон", "quantity": "1"}
+    },
+    {
+      "name": "Нестандартный запрос — витраж",
+      "messages": [
+        {"role": "user", "content": "Мне нужен витраж для офиса"},
+        {"role": "user", "content": "Фасадное остекление, 20 кв.м."}
+      ],
+      "expected_final_state": "handoff",
+      "expected_fields": {}
+    }
+  ],
+  "real_estate": [
+    {
+      "name": "Покупка квартиры",
+      "messages": [
+        {"role": "user", "content": "Хочу купить квартиру"},
+        {"role": "user", "content": "2-комнатную, центр, до 5 млн, ипотека"},
+        {"role": "user", "content": "Не срочно, в течение полугода"}
+      ],
+      "expected_final_state": "presentation",
+      "expected_fields": {"intent_type": "покупка", "rooms": "2"}
+    },
+    {
+      "name": "Аренда с животными",
+      "messages": [
+        {"role": "user", "content": "Ищу квартиру в аренду"},
+        {"role": "user", "content": "Однушку, спальный район, до 25 тыс/мес"},
+        {"role": "user", "content": "С собакой, заезд через неделю"}
+      ],
+      "expected_final_state": "presentation",
+      "expected_fields": {"intent_type": "аренда", "pets_kids": "собака"}
+    },
+    {
+      "name": "Продажа квартиры",
+      "messages": [
+        {"role": "user", "content": "Хочу продать квартиру"},
+        {"role": "user", "content": "3-комнатная, 75 кв.м., ул. Мира 10, 3/9 этаж, хороший ремонт"},
+        {"role": "user", "content": "Хотел бы за 4.5 млн"}
+      ],
+      "expected_final_state": "viewing",
+      "expected_fields": {"intent_type": "продажа", "area_sqm": "75"}
+    }
+  ],
+  "pharmacy": [
+    {
+      "name": "Поиск и бронирование",
+      "messages": [
+        {"role": "user", "content": "Есть ли у вас Нурофен 400мг?"},
+        {"role": "user", "content": "Отлично, хочу забронировать"},
+        {"role": "user", "content": "Анна, +7-900-111-22-33, аптека на Комсомольской"}
+      ],
+      "expected_final_state": "completed",
+      "expected_fields": {"drug_name": "Нурофен", "dosage": "400мг"}
+    },
+    {
+      "name": "Описание симптомов — отказ",
+      "messages": [
+        {"role": "user", "content": "У меня болит горло и температура 38"},
+        {"role": "user", "content": "Ну посоветуйте что-нибудь"}
+      ],
+      "expected_final_state": "symptoms",
+      "expected_fields": {}
+    },
+    {
+      "name": "Вопрос о графике",
+      "messages": [
+        {"role": "user", "content": "До скольки работает аптека на Первомайской?"}
+      ],
+      "expected_final_state": "info",
+      "expected_fields": {}
+    }
+  ]
+}

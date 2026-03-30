@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Tester</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1 { color: #58a6ff; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+        .panel h2 { color: #8b949e; font-size: 14px; text-transform: uppercase; margin-bottom: 12px; }
+        textarea { width: 100%; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; padding: 12px; font-family: 'Cascadia Code', monospace; font-size: 13px; resize: vertical; }
+        .prompt-area { min-height: 200px; }
+        .scenarios-area { min-height: 300px; }
+        .controls { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+        select, input { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 12px; border-radius: 6px; }
+        .btn { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn-run { background: #238636; color: white; }
+        .btn-run:hover { background: #2ea043; }
+        .btn-run:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+        .btn-clear { background: #21262d; color: #c9d1d9; }
+        .results { margin-top: 20px; }
+        .result-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #21262d; }
+        .result-item:hover { background: #161b22; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-pass { background: #238636; color: white; }
+        .badge-fail { background: #da3633; color: white; }
+        .badge-running { background: #1f6feb; color: white; }
+        .result-name { flex: 1; font-weight: 500; }
+        .result-time { color: #8b949e; font-size: 13px; }
+        .result-details { font-size: 12px; color: #8b949e; margin-top: 4px; }
+        .summary { display: flex; gap: 24px; padding: 16px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-top: 16px; }
+        .summary-item { text-align: center; }
+        .summary-value { font-size: 28px; font-weight: 700; }
+        .summary-label { font-size: 12px; color: #8b949e; }
+        .pass-rate { color: #3fb950; }
+        .fail-rate { color: #f85149; }
+        .progress { height: 4px; background: #21262d; border-radius: 2px; margin: 12px 0; overflow: hidden; }
+        .progress-bar { height: 100%; background: #1f6feb; transition: width 0.3s; }
+        .help { font-size: 12px; color: #8b949e; margin-top: 8px; }
+        a { color: #58a6ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prompt Tester</h1>
+        <div class="grid">
+            <div class="panel">
+                <h2>Системный промпт</h2>
+                <textarea class="prompt-area" id="systemPrompt" placeholder="Введите системный промпт..."></textarea>
+            </div>
+            <div class="panel">
+                <h2>Сценарии (JSON)</h2>
+                <textarea class="scenarios-area" id="scenarios" placeholder='[
+  {
+    "name": "Приветствие",
+    "messages": [{"role": "user", "content": "Привет"}],
+    "expected": "здравствуйте",
+    "check_type": "contains"
+  }
+]'></textarea>
+                <div class="help">
+                    check_type: <code>contains</code> | <code>not_contains</code> | <code>json_field</code> (field=value)
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="model">
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4o">gpt-4o</option>
+                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                <option value="gpt-4.1">gpt-4.1</option>
+            </select>
+            <label>Temp: <input type="number" id="temperature" value="0" min="0" max="2" step="0.1" style="width:60px"></label>
+            <button class="btn btn-run" id="runBtn" onclick="runTests()">Прогнать</button>
+            <button class="btn btn-clear" onclick="clearResults()">Очистить</button>
+            <span id="status" style="color:#8b949e;font-size:13px;"></span>
+        </div>
+
+        <div class="progress" id="progressWrap" style="display:none">
+            <div class="progress-bar" id="progressBar" style="width:0%"></div>
+        </div>
+
+        <div class="results" id="results"></div>
+        <div id="summaryWrap"></div>
+    </div>
+
+    <script>
+        async function runTests() {
+            const btn = document.getElementById('runBtn');
+            const status = document.getElementById('status');
+            const resultsEl = document.getElementById('results');
+            const summaryWrap = document.getElementById('summaryWrap');
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+
+            btn.disabled = true;
+            resultsEl.innerHTML = '';
+            summaryWrap.innerHTML = '';
+            progressWrap.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let scenarios;
+            try {
+                scenarios = JSON.parse(document.getElementById('scenarios').value);
+            } catch(e) {
+                status.textContent = 'Ошибка JSON: ' + e.message;
+                btn.disabled = false;
+                return;
+            }
+
+            const body = {
+                system_prompt: document.getElementById('systemPrompt').value,
+                scenarios: scenarios,
+                model: document.getElementById('model').value,
+                temperature: parseFloat(document.getElementById('temperature').value),
+            };
+
+            try {
+                const resp = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                });
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = JSON.parse(line.slice(6));
+
+                        if (data.type === 'start') {
+                            status.textContent = `Запуск ${data.total} сценариев...`;
+                        } else if (data.type === 'running') {
+                            status.textContent = `[${data.index+1}/${body.scenarios.length}] ${data.name}...`;
+                        } else if (data.type === 'result') {
+                            const pct = ((data.index + 1) / body.scenarios.length * 100);
+                            progressBar.style.width = pct + '%';
+
+                            resultsEl.innerHTML += `
+                                <div class="result-item">
+                                    <span class="badge badge-${data.status.toLowerCase()}">${data.status}</span>
+                                    <span class="result-name">${data.name}</span>
+                                    <span class="result-time">${data.duration}s</span>
+                                </div>
+                                <div class="result-details" style="padding:0 14px 8px 46px;">${data.details}</div>
+                            `;
+                        } else if (data.type === 'complete') {
+                            status.textContent = 'Готово!';
+                            const rate = data.total > 0 ? Math.round(data.passed / data.total * 100) : 0;
+                            summaryWrap.innerHTML = `
+                                <div class="summary">
+                                    <div class="summary-item"><div class="summary-value">${data.total}</div><div class="summary-label">Всего</div></div>
+                                    <div class="summary-item"><div class="summary-value pass-rate">${data.passed}</div><div class="summary-label">PASS</div></div>
+                                    <div class="summary-item"><div class="summary-value fail-rate">${data.failed}</div><div class="summary-label">FAIL</div></div>
+                                    <div class="summary-item"><div class="summary-value">${rate}%</div><div class="summary-label">Pass rate</div></div>
+                                    <div class="summary-item"><div class="summary-value">${data.total_duration}s</div><div class="summary-label">Время</div></div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+            } catch(e) {
+                status.textContent = 'Ошибка: ' + e.message;
+            }
+            btn.disabled = false;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('summaryWrap').innerHTML = '';
+            document.getElementById('status').textContent = '';
+            document.getElementById('progressWrap').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
