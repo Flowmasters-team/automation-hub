@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flowmasters — автоматизация, которая приносит деньги</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050508;
+  --surface:#0c0c14;
+  --card:#111119;
+  --card-hover:#16161f;
+  --border:rgba(255,255,255,.06);
+  --border-hover:rgba(255,255,255,.12);
+  --accent:#7c5cfc;
+  --accent2:#a78bfa;
+  --accent-glow:rgba(124,92,252,.4);
+  --green:#10b981;
+  --green-glow:rgba(16,185,129,.15);
+  --orange:#f59e0b;
+  --orange-glow:rgba(245,158,11,.1);
+  --red:#ef4444;
+  --text:#c8c8d8;
+  --muted:#6b6b80;
+  --white:#f0f0f5;
+  --gradient:linear-gradient(135deg,#7c5cfc 0%,#a78bfa 50%,#c084fc 100%);
+  --gradient2:linear-gradient(135deg,#10b981,#34d399);
+  --gradient3:linear-gradient(135deg,#f59e0b,#fbbf24);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.container{max-width:1140px;margin:0 auto;padding:0 28px}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 40px var(--accent-glow),0 0 80px rgba(124,92,252,.15)}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-d1{transition-delay:.1s}
+.reveal-d2{transition-delay:.2s}
+.reveal-d3{transition-delay:.3s}
+
+/* Floating orbs */
+.orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px)}
+.orb-1{width:600px;height:600px;background:rgba(124,92,252,.08);top:-200px;right:-200px;animation:float 8s ease-in-out infinite}
+.orb-2{width:400px;height:400px;background:rgba(16,185,129,.06);bottom:-100px;left:-150px;animation:float 10s ease-in-out infinite 2s}
+.orb-3{width:300px;height:300px;background:rgba(192,132,252,.06);top:50%;left:50%;animation:float 12s ease-in-out infinite 4s}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 0;transition:all .3s}
+nav.scrolled{background:rgba(5,5,8,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 0}
+nav .container{display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:1.3rem;font-weight:800;color:var(--white);letter-spacing:-.02em}
+.logo span{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-cta{padding:10px 28px;background:var(--gradient);color:var(--white);font-size:.88rem;font-weight:600;border-radius:50px;transition:all .25s;opacity:.9}
+.nav-cta:hover{opacity:1;transform:translateY(-1px);box-shadow:0 4px 20px var(--accent-glow)}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px 100px;position:relative;overflow:hidden}
+.hero-content{position:relative;z-index:2;max-width:860px;animation:fadeUp 1s ease .2s both}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.2);border-radius:50px;font-size:.85rem;color:var(--accent2);margin-bottom:32px;font-weight:500}
+.hero-badge::before{content:'';width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+.hero h1{font-size:clamp(2.6rem,6vw,4.2rem);font-weight:900;line-height:1.08;margin-bottom:24px;color:var(--white);letter-spacing:-.03em}
+.hero h1 span{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero h1 .green{background:var(--gradient2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:clamp(1.05rem,2vw,1.25rem);color:var(--muted);margin-bottom:48px;max-width:620px;margin-left:auto;margin-right:auto;line-height:1.7}
+.hero-sub strong{color:var(--text)}
+.hero-buttons{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;gap:10px;padding:18px 44px;background:var(--gradient);color:var(--white);font-size:1.08rem;font-weight:700;border-radius:60px;transition:all .3s;border:none;cursor:pointer;position:relative;overflow:hidden;animation:glow 3s ease-in-out infinite}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px var(--accent-glow)}
+.btn-primary::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transition:left .5s}
+.btn-primary:hover::after{left:100%}
+.btn-ghost{padding:18px 36px;color:var(--text);font-size:1rem;font-weight:600;border:1px solid var(--border-hover);border-radius:60px;transition:all .3s;backdrop-filter:blur(10px)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--white);background:rgba(124,92,252,.08)}
+
+/* Ticker */
+.ticker-wrap{overflow:hidden;padding:24px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface)}
+.ticker{display:flex;gap:48px;animation:ticker 30s linear infinite;width:max-content}
+.ticker-item{font-size:.9rem;color:var(--muted);white-space:nowrap;font-weight:500;display:flex;align-items:center;gap:8px}
+.ticker-item .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.5}
+
+/* Stats bar */
+.stats-bar{padding:0;position:relative;z-index:2;margin-top:-40px}
+.stats-inner{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;backdrop-filter:blur(20px)}
+.stat{padding:40px 24px;text-align:center;border-right:1px solid var(--border);transition:background .3s}
+.stat:last-child{border-right:none}
+.stat:hover{background:var(--card-hover)}
+.stat-num{font-size:clamp(2rem,4vw,2.8rem);font-weight:900;color:var(--white);margin-bottom:4px;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-label{font-size:.88rem;color:var(--muted);font-weight:500}
+
+/* Section common */
+section{padding:120px 0;position:relative}
+.section-label{display:inline-block;padding:6px 16px;background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.15);border-radius:50px;font-size:.8rem;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px}
+.section-label.orange{background:var(--orange-glow);border-color:rgba(245,158,11,.2);color:var(--orange)}
+.section-title{font-size:clamp(2rem,4vw,3rem);font-weight:800;margin-bottom:16px;color:var(--white);letter-spacing:-.02em}
+.section-sub{color:var(--muted);max-width:560px;font-size:1.05rem;line-height:1.7}
+.section-header{text-align:center;margin-bottom:64px}
+.section-header .section-sub{margin:0 auto}
+
+/* Why not just a bot */
+.why-not{background:var(--surface);overflow:hidden}
+.comparison{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.compare-card{border-radius:24px;padding:44px 40px;position:relative}
+.compare-them{background:rgba(239,68,68,.03);border:1px solid rgba(239,68,68,.1)}
+.compare-us{background:rgba(16,185,129,.03);border:1px solid rgba(16,185,129,.15)}
+.compare-label{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:24px;display:flex;align-items:center;gap:8px}
+.compare-them .compare-label{color:#f87171}
+.compare-them .compare-label::before{content:'';width:10px;height:10px;background:var(--red);border-radius:50%;opacity:.6}
+.compare-us .compare-label{color:#34d399}
+.compare-us .compare-label::before{content:'';width:10px;height:10px;background:var(--green);border-radius:50%}
+.compare-card h3{font-size:1.4rem;font-weight:800;margin-bottom:20px;color:var(--white)}
+.compare-list{list-style:none;display:flex;flex-direction:column;gap:14px}
+.compare-list li{font-size:.95rem;line-height:1.6;padding-left:24px;position:relative}
+.compare-them .compare-list li{color:#a08080}
+.compare-them .compare-list li::before{content:'\2715';position:absolute;left:0;color:var(--red);opacity:.5;font-size:.8rem}
+.compare-us .compare-list li{color:var(--text)}
+.compare-us .compare-list li::before{content:'\2713';position:absolute;left:0;color:var(--green);font-weight:700}
+.compare-bottom{text-align:center;margin-top:48px;padding:32px;background:var(--card);border:1px solid var(--border);border-radius:20px}
+.compare-bottom p{font-size:1.15rem;color:var(--text);line-height:1.7}
+.compare-bottom strong{color:var(--white)}
+.compare-bottom .accent{color:var(--accent2)}
+
+/* Pain → Solution */
+.pain-section{background:var(--bg)}
+.pain-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.pain-list{list-style:none;display:flex;flex-direction:column;gap:20px}
+.pain-col-title{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:24px;padding-left:4px}
+.pain-col-title.red{color:#f87171}
+.pain-col-title.green{color:#34d399}
+.pain-item,.gain-item{padding:24px 28px;border-radius:16px;font-size:1rem;line-height:1.6;display:flex;gap:14px;align-items:flex-start}
+.pain-item{background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.1);color:#f87171}
+.pain-item::before{content:'';flex-shrink:0;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-top:8px}
+.gain-item{background:var(--green-glow);border:1px solid rgba(16,185,129,.15);color:#34d399}
+.gain-item::before{content:'';flex-shrink:0;width:8px;height:8px;background:var(--green);border-radius:50%;margin-top:8px}
+
+/* Services */
+.services-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.service-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px 36px;transition:all .4s;position:relative;overflow:hidden}
+.service-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:var(--gradient);opacity:0;transition:opacity .4s}
+.service-card:hover{border-color:var(--border-hover);transform:translateY(-4px);background:var(--card-hover)}
+.service-card:hover::before{opacity:1}
+.service-icon{width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:rgba(124,92,252,.1);border-radius:14px;font-size:1.5rem;margin-bottom:22px}
+.service-card h3{font-size:1.2rem;font-weight:700;margin-bottom:10px;color:var(--white)}
+.service-card p{color:var(--muted);font-size:.95rem;line-height:1.7}
+
+/* Cases */
+.cases-section{background:var(--surface)}
+.cases-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.case-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px 36px;position:relative;overflow:hidden;transition:all .4s}
+.case-card:hover{border-color:var(--border-hover);transform:translateY(-4px)}
+.case-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient);opacity:.6}
+.case-tag{display:inline-block;padding:5px 14px;background:rgba(124,92,252,.1);color:var(--accent2);border-radius:20px;font-size:.78rem;font-weight:600;margin-bottom:18px;text-transform:uppercase;letter-spacing:.05em}
+.case-niche{display:inline-block;padding:5px 12px;background:rgba(255,255,255,.04);color:var(--muted);border-radius:20px;font-size:.75rem;font-weight:500;margin-left:8px}
+.case-card h3{font-size:1.2rem;font-weight:700;margin-bottom:12px;color:var(--white)}
+.case-card>p{color:var(--muted);font-size:.93rem;margin-bottom:20px;line-height:1.7}
+.case-metrics{display:flex;gap:24px;flex-wrap:wrap}
+.case-metric{display:flex;align-items:center;gap:10px}
+.case-metric-num{font-size:1.8rem;font-weight:800;background:var(--gradient2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.case-metric-label{font-size:.82rem;color:var(--muted);line-height:1.3}
+.case-quote{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);font-size:.88rem;color:var(--text);font-style:italic;line-height:1.6}
+
+/* Pricing */
+.pricing{background:var(--bg)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.price-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:44px 36px;text-align:center;transition:all .4s;position:relative}
+.price-card.featured{border-color:var(--accent);background:linear-gradient(180deg,rgba(124,92,252,.06),var(--card))}
+.price-card.featured::before{content:'Популярный';position:absolute;top:-14px;left:50%;transform:translateX(-50%);padding:6px 20px;background:var(--gradient);color:var(--white);font-size:.75rem;font-weight:700;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+.price-card:hover{transform:translateY(-6px)}
+.price-name{font-size:1.1rem;font-weight:700;color:var(--white);margin-bottom:8px}
+.price-desc{font-size:.88rem;color:var(--muted);margin-bottom:28px;line-height:1.5}
+.price-amount{font-size:2.6rem;font-weight:900;color:var(--white);margin-bottom:4px}
+.price-amount span{font-size:1rem;font-weight:500;color:var(--muted)}
+.price-period{font-size:.85rem;color:var(--muted);margin-bottom:32px}
+.price-features{list-style:none;text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:36px}
+.price-features li{font-size:.9rem;color:var(--text);padding-left:24px;position:relative;line-height:1.5}
+.price-features li::before{content:'\2713';position:absolute;left:0;color:var(--green);font-weight:700}
+.price-btn{display:block;padding:16px;background:rgba(124,92,252,.1);color:var(--accent2);font-size:.95rem;font-weight:700;border-radius:14px;transition:all .3s;text-align:center}
+.price-btn:hover{background:var(--accent);color:var(--white)}
+.price-card.featured .price-btn{background:var(--gradient);color:var(--white)}
+.price-card.featured .price-btn:hover{box-shadow:0 8px 30px var(--accent-glow)}
+.pricing-note{text-align:center;margin-top:40px;color:var(--muted);font-size:.9rem}
+
+/* Process */
+.process-section{background:var(--surface)}
+.process-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;position:relative}
+.process-steps::before{content:'';position:absolute;top:44px;left:16.66%;right:16.66%;height:2px;background:linear-gradient(90deg,var(--accent),var(--green));opacity:.2}
+.step{text-align:center;padding:0 32px;position:relative}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;background:var(--card);border:2px solid var(--accent);border-radius:50%;font-size:1.3rem;font-weight:800;color:var(--accent2);margin-bottom:28px;position:relative;z-index:1;transition:all .3s}
+.step:hover .step-num{background:var(--accent);color:var(--white);box-shadow:0 0 30px var(--accent-glow)}
+.step h3{font-size:1.15rem;font-weight:700;margin-bottom:10px;color:var(--white)}
+.step p{color:var(--muted);font-size:.93rem;line-height:1.7}
+.step-highlight{margin-top:16px;display:inline-block;padding:6px 16px;background:var(--green-glow);border:1px solid rgba(16,185,129,.2);border-radius:20px;font-size:.82rem;font-weight:600;color:var(--green)}
+
+/* Social proof */
+.proof{background:var(--bg);text-align:center}
+.proof-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;max-width:900px;margin:0 auto}
+.proof-quote{font-size:1.05rem;font-style:italic;color:var(--text);line-height:1.7;padding:40px;background:var(--card);border:1px solid var(--border);border-radius:24px;position:relative;text-align:left}
+.proof-quote::before{content:'\201C';position:absolute;top:-10px;left:28px;font-size:4rem;color:var(--accent);opacity:.2;font-family:Georgia,serif;line-height:1}
+.proof-author{margin-top:20px;font-size:.88rem;color:var(--muted);font-style:normal}
+.proof-author strong{color:var(--white)}
+
+/* CTA */
+.cta{text-align:center;padding:140px 24px;position:relative;overflow:hidden}
+.cta .orb{filter:blur(100px)}
+.cta-box{position:relative;z-index:2;max-width:680px;margin:0 auto;padding:80px 48px;background:var(--card);border:1px solid var(--border);border-radius:32px;overflow:hidden}
+.cta-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gradient)}
+.cta h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;margin-bottom:12px;color:var(--white);letter-spacing:-.02em}
+.cta p{color:var(--muted);margin-bottom:40px;font-size:1.1rem}
+.cta-guarantee{display:inline-flex;align-items:center;gap:8px;margin-top:24px;padding:10px 24px;background:var(--green-glow);border:1px solid rgba(16,185,129,.2);border-radius:50px;font-size:.88rem;color:var(--green);font-weight:600}
+.cta-note{margin-top:16px;font-size:.85rem;color:var(--muted)}
+
+/* Footer */
+footer{text-align:center;padding:48px 24px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+
+/* Mobile */
+@media(max-width:768px){
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .stat{border-bottom:1px solid var(--border)}
+  .services-grid,.cases-grid,.proof-cards{grid-template-columns:1fr}
+  .comparison{grid-template-columns:1fr}
+  .pain-grid{grid-template-columns:1fr;gap:32px}
+  .pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}
+  .process-steps{grid-template-columns:1fr;gap:40px}
+  .process-steps::before{display:none}
+  .hero{min-height:auto;padding:100px 20px 60px}
+  .hero-buttons{flex-direction:column}
+  .stats-bar{margin-top:20px}
+  .cta-box{padding:48px 28px}
+  section{padding:80px 0}
+  .compare-card{padding:32px 28px}
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="logo"><span>Flow</span>masters</div>
+    <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="nav-cta">Обсудить проект</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="hero-content">
+    <div class="hero-badge">Берём проекты на этой неделе</div>
+    <h1>Не удешевляем.<br><span>Делаем так, чтобы</span><br><span class="green">зарабатывали больше.</span></h1>
+    <p class="hero-sub">AI-автоматизация полного цикла: боты, CRM, аналитика, интеграции. <strong>Рабочий прототип за 48 часов</strong> — не обещание на 3 месяца.</p>
+    <div class="hero-buttons">
+      <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="btn-primary">Получить решение &rarr;</a>
+      <a href="#cases" class="btn-ghost">Смотреть кейсы</a>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="stats-bar reveal">
+  <div class="container">
+    <div class="stats-inner">
+      <div class="stat">
+        <div class="stat-num">70%+</div>
+        <div class="stat-label">конверсия AI-ботов</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">48ч</div>
+        <div class="stat-label">до первого результата</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-label">потерянных заявок</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">x3</div>
+        <div class="stat-label">быстрее принятие решений</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ticker -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ticker-item"><span class="dot"></span>Недвижимость</span>
+    <span class="ticker-item"><span class="dot"></span>EdTech</span>
+    <span class="ticker-item"><span class="dot"></span>HrTech</span>
+    <span class="ticker-item"><span class="dot"></span>Сервисные компании</span>
+    <span class="ticker-item"><span class="dot"></span>Ритейл</span>
+    <span class="ticker-item"><span class="dot"></span>Производство</span>
+    <span class="ticker-item"><span class="dot"></span>Логистика</span>
+    <span class="ticker-item"><span class="dot"></span>Финансы</span>
+    <span class="ticker-item"><span class="dot"></span>Медицина</span>
+    <span class="ticker-item"><span class="dot"></span>Юридические услуги</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="dot"></span>Недвижимость</span>
+    <span class="ticker-item"><span class="dot"></span>EdTech</span>
+    <span class="ticker-item"><span class="dot"></span>HrTech</span>
+    <span class="ticker-item"><span class="dot"></span>Сервисные компании</span>
+    <span class="ticker-item"><span class="dot"></span>Ритейл</span>
+    <span class="ticker-item"><span class="dot"></span>Производство</span>
+    <span class="ticker-item"><span class="dot"></span>Логистика</span>
+    <span class="ticker-item"><span class="dot"></span>Финансы</span>
+    <span class="ticker-item"><span class="dot"></span>Медицина</span>
+    <span class="ticker-item"><span class="dot"></span>Юридические услуги</span>
+  </div>
+</div>
+
+<!-- Why not just a bot -->
+<section class="why-not">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label orange">Почему не просто бот</span>
+      <h2 class="section-title">Бот за 150К — это расход.<br>Система — это доход.</h2>
+      <p class="section-sub">На рынке десятки студий, которые продают «бота дешевле менеджера». Мы строим другое.</p>
+    </div>
+    <div class="comparison reveal">
+      <div class="compare-card compare-them">
+        <div class="compare-label">Типичная AI-студия</div>
+        <h3>«Сделаем бота, сохраним конверсию»</h3>
+        <ul class="compare-list">
+          <li>Один бот — текстовый или голосовой</li>
+          <li>Обещают не уронить конверсию</li>
+          <li>~150К внедрение + непрозрачная накрутка на токены</li>
+          <li>CRM, аналитика, интеграции — не их зона</li>
+          <li>Результат через недели согласований</li>
+        </ul>
+      </div>
+      <div class="compare-card compare-us">
+        <div class="compare-label">Flowmasters</div>
+        <h3>«Построим систему, которая зарабатывает»</h3>
+        <ul class="compare-list">
+          <li>Бот + CRM + интеграции + аналитика = полный цикл</li>
+          <li>Растим конверсию и выручку, а не просто «сохраняем»</li>
+          <li>Прозрачный чек, фикс за внедрение, понятная подписка</li>
+          <li>Связываем всё: Telegram, Avito, Bitrix24, 1С, телефонию</li>
+          <li>Рабочий прототип за 48 часов</li>
+        </ul>
+      </div>
+    </div>
+    <div class="compare-bottom reveal">
+      <p>Конкуренты экономят вам <strong>зарплату одного менеджера</strong>.<br>Мы строим систему, которая <span class="accent">приносит выручку десяти</span>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Pain → Solution -->
+<section class="pain-section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Проблема &rarr; Решение</span>
+      <h2 class="section-title">Узнаёте свой бизнес?</h2>
+    </div>
+    <div class="pain-grid reveal">
+      <div>
+        <div class="pain-col-title red">Сейчас</div>
+        <ul class="pain-list">
+          <li class="pain-item">Менеджеры забывают перезвонить — лиды уходят к конкурентам</li>
+          <li class="pain-item">CRM, мессенджеры, Avito — всё отдельно, данные теряются</li>
+          <li class="pain-item">Нет аналитики — решения на интуиции, деньги в пустоту</li>
+          <li class="pain-item">Пробовали «бота» — он раздражает клиентов и не продаёт</li>
+        </ul>
+      </div>
+      <div>
+        <div class="pain-col-title green">С нами</div>
+        <ul class="pain-list">
+          <li class="gain-item">AI-бот за 3 секунды квалифицирует и передаёт горячего клиента</li>
+          <li class="gain-item">Единая воронка: все каналы в одном месте, 0 потерь</li>
+          <li class="gain-item">Дашборд в реальном времени — воронка, конверсии, прогноз выручки</li>
+          <li class="gain-item">FSM-бот с контекстом: продаёт, а не спрашивает «нажмите 1»</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Services -->
+<section class="services-section" style="background:var(--surface)">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Что мы строим</span>
+      <h2 class="section-title">Полный стек автоматизации</h2>
+      <p class="section-sub">Одна команда закрывает всё — не нужно нанимать 4 подрядчика</p>
+    </div>
+    <div class="services-grid reveal">
+      <div class="service-card">
+        <div class="service-icon">&#129302;</div>
+        <h3>AI-боты, которые продают</h3>
+        <p>FSM-логика, 22+ сигнала, понимание контекста. Текст + голос. Бот ведёт диалог как лучший менеджер, а не как IVR-меню.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#128279;</div>
+        <h3>Интеграции за дни</h3>
+        <p>Bitrix24, amoCRM, 1С, Telegram, Avito, WhatsApp, телефония — связываем в единый поток. Без «подождите 2 месяца».</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#128202;</div>
+        <h3>BI-аналитика</h3>
+        <p>Дашборды для руководителей. Воронка, LTV, ROI рекламы, прогноз — решения на данных, а не на ощущениях.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#9881;&#65039;</div>
+        <h3>Процессы на автопилоте</h3>
+        <p>HR, документооборот, маршрутизация заявок. Всё, что делает сотрудник по скрипту — делает система.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Cases -->
+<section class="cases-section" id="cases">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Кейсы</span>
+      <h2 class="section-title">Цифры, а не слова</h2>
+      <p class="section-sub">Каждый проект — измеримый результат для бизнеса</p>
+    </div>
+    <div class="cases-grid reveal">
+
+      <!-- Кейс 1: FSM-бот -->
+      <div class="case-card">
+        <span class="case-tag">AI-бот</span><span class="case-niche">Сервис / B2C</span>
+        <h3>FSM-бот для сервисной компании</h3>
+        <p>Конечный автомат с 8 состояниями и 22 сигналами распознавания. Мгновенные ответы на Авито, Telegram и VK одновременно. Квалификация, обработка возражений, запись на замер — без участия менеджера.</p>
+        <div class="case-metrics">
+          <div class="case-metric">
+            <span class="case-metric-num">70%+</span>
+            <span class="case-metric-label">конверсия<br>заявка &rarr; замер</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">3с</span>
+            <span class="case-metric-label">время<br>ответа</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">24/7</span>
+            <span class="case-metric-label">обработка<br>заявок</span>
+          </div>
+        </div>
+        <div class="case-quote">«Бот обрабатывает 80% входящих. Менеджеры работают только со сложными кейсами — нагрузка упала в 3 раза.»</div>
+      </div>
+
+      <!-- Кейс 2: Сквозная интеграция -->
+      <div class="case-card">
+        <span class="case-tag">Интеграция</span><span class="case-niche">Продажи / Авито</span>
+        <h3>Авито &rarr; AI-бот &rarr; CRM &rarr; Telegram</h3>
+        <p>Сквозная цепочка: клиент пишет на Авито &mdash; бот квалифицирует &mdash; сделка автоматически в Битрикс24 &mdash; менеджер получает горячую сводку в Telegram. Ни одна заявка не теряется.</p>
+        <div class="case-metrics">
+          <div class="case-metric">
+            <span class="case-metric-num">0</span>
+            <span class="case-metric-label">потерянных<br>заявок</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">100%</span>
+            <span class="case-metric-label">автоматом<br>в CRM</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">3 дня</span>
+            <span class="case-metric-label">внедрение<br>под ключ</span>
+          </div>
+        </div>
+        <div class="case-quote">«Раньше заявки из Avito терялись, из Telegram — забывались. Теперь всё в одной воронке. За первый месяц нашли 30+ потерянных лидов.»</div>
+      </div>
+
+      <!-- Кейс 3: Единый пульт управления -->
+      <div class="case-card">
+        <span class="case-tag">MCP-серверы</span><span class="case-niche">Менеджмент</span>
+        <h3>Единый пульт управления бизнесом</h3>
+        <p>4 системы (Битрикс24, Telegram, Google, автоматизации) подключены к одному AI-ассистенту. 30+ действий из одного чата: задачи, CRM, переписки, календарь, рассылки.</p>
+        <div class="case-metrics">
+          <div class="case-metric">
+            <span class="case-metric-num">2ч &rarr; 20м</span>
+            <span class="case-metric-label">время на<br>рутину в день</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">10с</span>
+            <span class="case-metric-label">поставить задачу<br>вместо 5 мин</span>
+          </div>
+        </div>
+        <div class="case-quote">«Перестал переключаться между 5 вкладками. Всё из одного окна — задачи, сделки, переписки.»</div>
+      </div>
+
+      <!-- Кейс 4: BI-аналитика -->
+      <div class="case-card">
+        <span class="case-tag">Аналитика</span><span class="case-niche">Управление</span>
+        <h3>BI-дашборд: 35 метрик в реальном времени</h3>
+        <p>Воронка продаж, конверсии ботов, загрузка менеджеров, ROI по каналам, прогноз выручки. Автоалерты в Telegram: если конверсия падает — руководитель знает сразу.</p>
+        <div class="case-metrics">
+          <div class="case-metric">
+            <span class="case-metric-num">35</span>
+            <span class="case-metric-label">метрик<br>на дашборде</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">0ч</span>
+            <span class="case-metric-label">ручной<br>отчётности</span>
+          </div>
+          <div class="case-metric">
+            <span class="case-metric-num">RT</span>
+            <span class="case-metric-label">данные<br>real-time</span>
+          </div>
+        </div>
+        <div class="case-quote">«Раньше решения принимались на интуиции. Теперь вижу цифры в реальном времени — и сразу понятно, где теряем.»</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Стоимость</span>
+      <h2 class="section-title">Прозрачный чек. Без сюрпризов.</h2>
+      <p class="section-sub">Никакой «накрутки на токены» и скрытых платежей. Вы платите за результат.</p>
+    </div>
+    <div class="pricing-grid reveal">
+      <div class="price-card">
+        <div class="price-name">Быстрый старт</div>
+        <div class="price-desc">Один инструмент: бот, интеграция или дашборд</div>
+        <div class="price-amount">от 80К <span>&#8381;</span></div>
+        <div class="price-period">разовое внедрение</div>
+        <ul class="price-features">
+          <li>1 рабочий инструмент за 48 часов</li>
+          <li>Настройка и обучение команды</li>
+          <li>2 недели поддержки</li>
+        </ul>
+        <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="price-btn">Обсудить</a>
+      </div>
+      <div class="price-card featured">
+        <div class="price-name">Система</div>
+        <div class="price-desc">Бот + CRM + интеграции — полный цикл автоматизации</div>
+        <div class="price-amount">от 150К <span>&#8381;</span></div>
+        <div class="price-period">внедрение + подписка от 25К/мес</div>
+        <ul class="price-features">
+          <li>AI-бот + CRM-интеграция</li>
+          <li>Единая воронка из всех каналов</li>
+          <li>BI-дашборд</li>
+          <li>Постоянная поддержка и доработки</li>
+        </ul>
+        <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="price-btn">Выбрать</a>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Под ключ</div>
+        <div class="price-desc">Полная автоматизация отдела: продажи, HR, аналитика</div>
+        <div class="price-amount">от 300К <span>&#8381;</span></div>
+        <div class="price-period">проект + подписка</div>
+        <ul class="price-features">
+          <li>Всё из «Системы» + масштабирование</li>
+          <li>Голосовые + текстовые боты</li>
+          <li>Кастомные интеграции</li>
+          <li>Выделенный менеджер</li>
+        </ul>
+        <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="price-btn">Обсудить</a>
+      </div>
+    </div>
+    <p class="pricing-note">Все цены — за результат, не за часы. Токены включены в подписку.</p>
+  </div>
+</section>
+
+<!-- Process -->
+<section class="process-section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Процесс</span>
+      <h2 class="section-title">От звонка до работающей системы</h2>
+      <p class="section-sub">Без ТЗ на 40 страниц и согласований по 2 месяца</p>
+    </div>
+    <div class="process-steps reveal">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>30-минутный аудит</h3>
+        <p>Разбираем вашу задачу, считаем ROI, показываем где теряете деньги и как это починить.</p>
+        <span class="step-highlight">Бесплатно</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Прототип за 48 часов</h3>
+        <p>Рабочий MVP — вы видите результат и принимаете решение на основе реального эффекта, а не презентации.</p>
+        <span class="step-highlight">Платите после результата</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Масштабирование</h3>
+        <p>Новые каналы, интеграции, аналитика. Система растёт вместе с вашим бизнесом по подписке.</p>
+        <span class="step-highlight">Растём вместе</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Social proof -->
+<section class="proof">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Отзывы</span>
+      <h2 class="section-title">Что говорят клиенты</h2>
+    </div>
+    <div class="proof-cards reveal">
+      <div class="proof-quote">
+        Думали, автоматизация — это долго и дорого. Ребята показали рабочий результат на второй день. Бот обрабатывает 80% входящих, менеджеры работают только с горячими.
+        <div class="proof-author"><strong>Руководитель сервисной компании</strong></div>
+      </div>
+      <div class="proof-quote">
+        Раньше заявки из Avito терялись, из Telegram — забывались. Теперь всё в одной воронке в Bitrix. За первый месяц нашли 30+ «потерянных» лидов.
+        <div class="proof-author"><strong>Коммерческий директор, продажи</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-3"></div>
+  <div class="cta-box">
+    <span class="section-label">Начните сейчас</span>
+    <h2>Каждый день без системы —<br>это потерянные деньги</h2>
+    <p>30-минутный аудит бесплатно. Покажем, где вы теряете и сколько можете зарабатывать.</p>
+    <a href="https://t.me/+a4-Tg7aaPCRjMzMy" class="btn-primary">Написать в Telegram &rarr;</a>
+    <div class="cta-guarantee">Прототип за 48 часов или не берём деньги</div>
+    <div class="cta-note">Ответим в течение часа в рабочее время</div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">&copy; 2026 Flowmasters. Автоматизация бизнес-процессов.</div>
+</footer>
+
+<script>
+// Nav scroll
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>50)});
+
+// Reveal on scroll
+const reveals=document.querySelectorAll('.reveal');
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})
+},{threshold:.12,rootMargin:'0px 0px -60px 0px'});
+reveals.forEach(el=>observer.observe(el));
+
+// Animate stat numbers
+function animateValue(el,end,suffix='',duration=2000){
+  let start=0;const step=end/duration*16;
+  const timer=setInterval(()=>{
+    start+=step;
+    if(start>=end){start=end;clearInterval(timer)}
+    el.textContent=(Number.isInteger(end)?Math.floor(start):start.toFixed(0))+suffix;
+  },16);
+}
+const statsObserver=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const nums=e.target.querySelectorAll('.stat-num');
+      nums[0].textContent='';animateValue(nums[0],70,'%+');
+      nums[1].textContent='';animateValue(nums[1],48,'ч');
+      nums[2].textContent='0';
+      nums[3].textContent='x3';
+      statsObserver.unobserve(e.target);
+    }
+  })
+},{threshold:.3});
+const statsEl=document.querySelector('.stats-inner');
+if(statsEl)statsObserver.observe(statsEl);
+</script>
+
+</body>
+</html>
