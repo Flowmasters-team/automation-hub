@@ -277,45 +277,30 @@ def create_rao_report(
 
     data_row = rules_start + len(rules) + 3
 
-    # --- Боковые подписи: ОБЩЕСТВО / ПОЛЬЗОВАТЕЛЬ ---
-    # ОБЩЕСТВО (левый край, на уровне шапки)
-    ws.merge_cells(start_row=6, start_column=1, end_row=11, end_column=1)
-    cell_o = ws.cell(row=6, column=1, value="ОБЩЕСТВО")
-    cell_o.font = font_main
-    cell_o.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+    # --- Боковые подписи: ОБЩЕСТВО (шапка) ---
+    ws.cell(row=7, column=1, value="М.П.").font = font_main
+    ws.cell(row=8, column=2, value="(И.А.Базилевский)").font = font_main
 
-    ws.merge_cells(start_row=6, start_column=2, end_row=13, end_column=2)
-    ws.cell(row=6, column=2, value="(И.А.Базилевский)").font = font_main
-
-    # ПОЛЬЗОВАТЕЛЬ (левый край, на уровне подписей)
-    ws.merge_cells(start_row=data_row, start_column=2, end_row=data_row + 5, end_column=2)
-    ws.cell(row=data_row, column=2, value="ПОЛЬЗОВАТЕЛЬ").font = font_main
-
-    # М.П. слева
+    # --- ПОЛЬЗОВАТЕЛЬ (подвал) ---
     ws.cell(row=data_row, column=1, value="М.П.").font = font_main
-    ws.merge_cells(start_row=data_row + 1, start_column=2, end_row=data_row + 6, end_column=2)
     ws.cell(row=data_row + 1, column=2, value="(                           )").font = font_main
 
     # --- Подписи внизу ---
-    sign_row = data_row + 8
+    sign_row = data_row + 4
     ws.merge_cells(start_row=sign_row, start_column=4, end_row=sign_row, end_column=5)
-    ws.cell(row=sign_row, column=4, value="                      М.П. _________________").font = font_main
+    ws.cell(row=sign_row, column=4, value="М.П. _________________").font = font_main
 
-    ws.merge_cells(start_row=sign_row, start_column=6, end_row=sign_row, end_column=7)
+    ws.merge_cells(start_row=sign_row, start_column=6, end_row=sign_row, end_column=8)
     ws.cell(row=sign_row, column=6, value="_____________________").font = font_main
 
-    ws.merge_cells(start_row=sign_row, start_column=8, end_row=sign_row, end_column=9)
-    ws.cell(row=sign_row, column=8, value="Дата_____________").font = font_main
+    ws.cell(row=sign_row, column=9, value="Дата_____________").font = font_main
 
     # Подписи под линиями
     ws.merge_cells(start_row=sign_row + 1, start_column=4, end_row=sign_row + 1, end_column=5)
     ws.cell(row=sign_row + 1, column=4, value="   (подпись)").font = font_main
 
-    ws.merge_cells(start_row=sign_row + 1, start_column=6, end_row=sign_row + 1, end_column=7)
+    ws.merge_cells(start_row=sign_row + 1, start_column=6, end_row=sign_row + 1, end_column=8)
     ws.cell(row=sign_row + 1, column=6, value="          (должность, ФИО руководителя)").font = font_main
-
-    # М.П. в шапке
-    ws.cell(row=6, column=1, value="М.П.").font = font_main
 
     # --- Сохранение ---
     wb.save(output_path)
