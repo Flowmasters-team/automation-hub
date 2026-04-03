@@ -26,6 +26,7 @@ except ImportError:
 from extract_metadata import extract_metadata
 from fill_form import create_rao_report
 from tag_lookup import lookup_track
+from fingerprint_lookup import lookup_by_fingerprint, is_available as fpcalc_available
 
 # Календарик для даты
 try:
@@ -90,6 +91,7 @@ class ProgramFrame:
         ttk.Button(btn_frame, text="Добавить папку", command=self._browse_folder).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Очистить треки", command=self._clear_tracks).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Найти теги", command=self._find_tags_async).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="По слепку", command=self._find_by_fingerprint_async).pack(side="left", padx=5)
 
         # --- Таблица ---
         # Колонки: ✕ | # | Название | Композитор | Длительность | ◄ | Исп. | ► | Файл
@@ -340,6 +342,54 @@ class ProgramFrame:
         else:
             self.app.status_var.set(f"Не найдено: «{title}»")
             messagebox.showinfo("Найти теги", f"MusicBrainz не нашёл данные для «{title}»")
+
+    def _find_by_fingerprint_async(self):
+        """Поиск по аудиоотпечатку через AcoustID + Chromaprint."""
+        if not fpcalc_available():
+            messagebox.showwarning(
+                "По слепку",
+                "fpcalc не найден!\n\n"
+                "Скачайте Chromaprint:\nhttps://acoustid.org/chromaprint\n\n"
+                "Положите fpcalc.exe рядом с программой или в PATH.",
+            )
+            return
+        if not self.tracks:
+            messagebox.showinfo("По слепку", "Нет треков для поиска")
+            return
+
+        targets = [(i, t) for i, t in enumerate(self.tracks)]
+        self.app.status_var.set(f"Анализ аудио… (0 / {len(targets)})")
+        self.app.root.update_idletasks()
+
+        def worker():
+            found = 0
+            for idx, (track_idx, track) in enumerate(targets):
+                filepath = track.get("filepath", "")
+                if not filepath or not os.path.isfile(filepath):
+                    continue
+                result = lookup_by_fingerprint(filepath)
+                if result.get("composer"):
+                    self.tracks[track_idx]["composer"] = result["composer"]
+                    found += 1
+                elif result.get("artist") and not track.get("composer"):
+                    self.tracks[track_idx]["composer"] = result["artist"]
+                    found += 1
+                done = idx + 1
+                total = len(targets)
+                self.app.root.after(
+                    0,
+                    lambda d=done, t=total, f=found: self.app.status_var.set(
+                        f"Анализ аудио… ({d} / {t}), найдено: {f}"
+                    ),
+                )
+            self.app.root.after(0, lambda: self._finish_fingerprint_lookup(found, len(targets)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_fingerprint_lookup(self, found: int, total: int):
+        self._refresh_table()
+        self.app.update_status()
+        messagebox.showinfo("По слепку", f"Найдено: {found} из {total} треков")
 
     def _on_drop(self, event):
         files = _parse_dnd_paths(event.data)

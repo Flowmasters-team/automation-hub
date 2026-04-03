@@ -115,7 +115,9 @@ def create_rao_report(
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
     align_top_center = Alignment(horizontal="center", vertical="top", wrap_text=True)
-    align_vertical = Alignment(text_rotation=255, horizontal="center", vertical="center", wrap_text=True)
+    # Два направления вертикального текста
+    align_vert_up = Alignment(text_rotation=90, horizontal="center", vertical="center", wrap_text=True)    # снизу вверх (ОБЩЕСТВО)
+    align_vert_down = Alignment(text_rotation=255, horizontal="center", vertical="center", wrap_text=True)  # сверху вниз (остальные)
     thin = Side(style="thin")
     border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
     border_left = Border(left=thin)
@@ -300,19 +302,19 @@ def create_rao_report(
     ws.merge_cells(start_row=2, start_column=2, end_row=6, end_column=2)
     cell_o = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
     cell_o.font = font_side
-    cell_o.alignment = align_vertical
+    cell_o.alignment = align_vert_up  # ОБЩЕСТВО — снизу вверх
 
     # A7:A11 = "М.П." вертикально
     ws.merge_cells(start_row=7, start_column=1, end_row=11, end_column=1)
     cell_mp = ws.cell(row=7, column=1, value="М.П.")
     cell_mp.font = font_main
-    cell_mp.alignment = align_vertical
+    cell_mp.alignment = align_vert_down
 
     # B7:B13 = "(И.А.Базилевский)" вертикально
     ws.merge_cells(start_row=7, start_column=2, end_row=13, end_column=2)
     cell_baz = ws.cell(row=7, column=2, value="(И.А.Базилевский)")
     cell_baz.font = font_main
-    cell_baz.alignment = align_vertical
+    cell_baz.alignment = align_vert_down
 
     # --- НИЗ ---
     # B[rules_start-5 : rules_start] = "ПОЛЬЗОВАТЕЛЬ" вертикально
@@ -320,19 +322,19 @@ def create_rao_report(
     ws.merge_cells(start_row=user_start, start_column=2, end_row=rules_start, end_column=2)
     cell_p = ws.cell(row=user_start, column=2, value="ПОЛЬЗОВАТЕЛЬ")
     cell_p.font = font_side
-    cell_p.alignment = align_vertical
+    cell_p.alignment = align_vert_up  # ПОЛЬЗОВАТЕЛЬ — снизу вверх
 
     # A[rules_start+1 : rules_start+5] = "М.П." вертикально
     ws.merge_cells(start_row=rules_start + 1, start_column=1, end_row=rules_start + 5, end_column=1)
     cell_mp2 = ws.cell(row=rules_start + 1, column=1, value="М.П.")
     cell_mp2.font = font_main
-    cell_mp2.alignment = align_vertical
+    cell_mp2.alignment = align_vert_down
 
     # B[rules_start+1 : rules_end+4] = "(                           )" вертикально
     ws.merge_cells(start_row=rules_start + 1, start_column=2, end_row=rules_end + 4, end_column=2)
     cell_brk = ws.cell(row=rules_start + 1, column=2, value="(                           )")
     cell_brk.font = font_main
-    cell_brk.alignment = align_vertical
+    cell_brk.alignment = align_vert_down
 
     # ============================================================
     # ПОДПИСИ ВНИЗУ
