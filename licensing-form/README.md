@@ -1,6 +1,6 @@
-# Автозаполнение лицензионной музыкальной формы
+# Автозаполнение отчёта РАО (ВГТРК)
 
-Скрипт для звукорежиссёров: извлекает метаданные из аудиофайлов и генерирует Excel-таблицу (музыкальную справку).
+Скрипт для звукорежиссёров: извлекает метаданные из аудиофайлов и генерирует Excel-таблицу — отчёт об использованных произведениях (Приложение №1 к Лицензионному договору между РАО и ВГТРК).
 
 ## Установка
 
@@ -8,37 +8,57 @@
 pip install -r requirements.txt
 ```
 
-## Использование
+## Быстрый старт
+
+### Одна передача — аудиофайлы
 
 ```bash
-# Несколько файлов
-python fill_form.py track1.mp3 track2.wav track3.flac
+# Файлы напрямую
+python fill_form.py track1.mp3 track2.mp3 \
+    --program "АМВ Вездино Церковь ч1" \
+    --date "04.09.25" \
+    --month "сентябрь" \
+    --year "2025"
 
-# Вся папка с музыкой
-python fill_form.py --dir /path/to/music/
+# Вся папка
+python fill_form.py --dir /path/to/music/ \
+    --program "Вести" --date "01.10.25"
 
-# Список из файла
-python fill_form.py --list tracklist.txt
-
-# С названием программы и выходным файлом
-python fill_form.py --dir ./music/ --program "Вести" --output vesti_music.xlsx
+# Список из текстового файла
+python fill_form.py --list tracklist.txt \
+    --program "Доброе утро" --date "15.09.25"
 ```
 
-## Что извлекается
+### Несколько передач — JSON
 
-| Поле | Источник |
-|------|----------|
-| Название | ID3: TIT2 / Vorbis: title |
-| Исполнитель | ID3: TPE1 / Vorbis: artist |
-| Композитор | ID3: TCOM / Vorbis: composer |
-| Альбом | ID3: TALB / Vorbis: album |
-| Год | ID3: TDRC / Vorbis: date |
-| Хронометраж | audio.info.length |
-| ISRC | ID3: TSRC / Vorbis: isrc |
-| Издатель | ID3: TPUB / Vorbis: publisher |
-| Копирайт | ID3: TCOP / Vorbis: copyright |
-| Жанр | ID3: TCON / Vorbis: genre |
+```bash
+python fill_form.py --json report_data.json --output "Отчёт_сентябрь_2025.xlsx"
+```
 
-## Поддерживаемые форматы
+Формат JSON — см. `example_report.json`.
+
+### Только метаданные (без отчёта)
+
+```bash
+python extract_metadata.py track1.mp3 track2.mp3
+python extract_metadata.py --dir /path/to/music/
+```
+
+## Колонки отчёта РАО
+
+| № | Колонка | Источник |
+|---|---------|----------|
+| 1 | Наименование передачи | --program |
+| 2 | Дата и время выхода в эфир | --date |
+| 3 | Название произведения | ID3: TIT2 / имя файла |
+| 4 | ФИО композитора | ID3: TPE1 (artist) |
+| 5 | ФИО автора текста | — (заполнить вручную) |
+| 6 | Длительность звучания | audio.info.length |
+| 7 | Количество исполнений | play_count (по умолч. 1) |
+| 8 | Общий хронометраж | длительность × кол-во |
+| 9 | Жанр произведения | --genre (по умолч. "пьеса") |
+| 10 | Исполнитель | ID3: TPE1 / --performer |
+
+## Поддерживаемые аудиоформаты
 
 MP3, WAV, FLAC, OGG, AIFF, M4A/AAC, WMA

@@ -1,20 +1,32 @@
 """
-Заполнение лицензионной формы ВГТРК данными из аудиофайлов.
+Заполнение отчёта РАО об использованных произведениях (форма ВГТРК).
 
-Генерирует Excel-таблицу (.xlsx) с метаданными треков.
-Может также заполнять шаблон Word (.docx), если он предоставлен.
+Генерирует Excel-таблицу (.xlsx) с точной структурой формы РАО:
+  Приложение №1 к Лицензионному договору между РАО и ВГТРК.
+
+Колонки:
+  1. Наименование передачи
+  2. Дата и время выхода в эфир (число, часы, мин.)
+  3. Название музыкальных произведений, используемых в программе
+  4. ФИО композитора
+  5. ФИО автора текста
+  6. Длительность звучания произведения (мин. сек.)
+  7. Количество исполнений
+  8. Общий хронометраж
+  9. Жанр произведения
+  10. Исполнитель (ФИО исполнителя или название коллектива)
 
 Зависимости: pip install mutagen openpyxl
-Опционально:  pip install python-docx  (для Word-шаблонов)
 """
 
+import json
 import os
 import sys
 from datetime import datetime
 
 try:
     from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.styles import Font, Alignment, Border, Side
 except ImportError:
     print("Ошибка: не установлена библиотека openpyxl")
     print("Установите: pip install openpyxl")
@@ -23,115 +35,234 @@ except ImportError:
 from extract_metadata import extract_from_list, extract_from_directory
 
 
-# Колонки таблицы — настройте под вашу форму
-COLUMNS = [
-    ("№ п/п", 6),
-    ("Название произведения", 35),
-    ("Автор / Исполнитель", 30),
-    ("Композитор", 25),
-    ("Альбом", 25),
-    ("Год", 8),
-    ("Хронометраж", 14),
-    ("ISRC", 18),
-    ("Издатель / Лейбл", 25),
-    ("Копирайт", 25),
-    ("Жанр", 15),
-    ("Примечание", 20),
+# --- Колонки формы РАО ---
+RAO_COLUMNS = [
+    ("Наименование передачи", 30),
+    ("Дата и время выхода в эфир\n(число, часы, мин.)", 18),
+    ("Название музыкальных произведений,\nиспользуемых в программе", 35),
+    ("ФИО\nкомпозитора", 20),
+    ("ФИО автора\nтекста", 18),
+    ("Длительность\nзвучания\nпроизведения\n(мин. сек.)", 14),
+    ("Количест-\nво\nисполне-\nний", 12),
+    ("Общий\nхрономет-\nраж", 12),
+    ("Жанр\nпроизведе-\nния", 14),
+    ("Исполнитель\n(ФИО исполнителя\nили название\nколлектива)", 25),
 ]
 
 
-def create_excel(tracks: list[dict], output_path: str, program_name: str = ""):
-    """Создаёт Excel-файл с лицензионной таблицей."""
+def _fmt_duration(seconds: float) -> str:
+    """Форматирует длительность как M:SS:ss или H:MM:SS."""
+    total = int(seconds)
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    if h > 0:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"0:{m:02d}:{s:02d}"
+
+
+def _multiply_duration(seconds: float, count: int) -> str:
+    """Общий хронометраж = длительность * кол-во исполнений."""
+    return _fmt_duration(seconds * count)
+
+
+def create_rao_report(
+    programs: list[dict],
+    output_path: str,
+    month: str = "",
+    quarter: str = "",
+    year: str = "",
+    contract_no: str = "",
+    contractor: str = "",
+):
+    """
+    Создаёт Excel-файл в формате отчёта РАО.
+
+    programs — список программ, каждая:
+    {
+        "name": "АМВ Вездино Церковь ч1",
+        "air_date": "04.09.25",
+        "tracks": [
+            {
+                "title": "Gothic Oblivion",     # из метаданных или вручную
+                "composer": "PP Music (UK)",     # ФИО композитора
+                "lyricist": "",                  # ФИО автора текста
+                "duration_seconds": 76,          # из метаданных
+                "play_count": 1,                 # кол-во исполнений (по умолчанию 1)
+                "genre": "пьеса",                # жанр
+                "performer": "инстр. Анс",       # исполнитель
+            },
+            ...
+        ]
+    }
+    """
     wb = Workbook()
     ws = wb.active
-    ws.title = "Лицензионная форма"
+    ws.title = "Лист1"
 
     # --- Стили ---
-    header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
-    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    cell_font = Font(name="Arial", size=10)
-    cell_alignment = Alignment(vertical="top", wrap_text=True)
-    thin_border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin"),
-    )
+    font_main = Font(name="Times New Roman", size=10)
+    font_bold = Font(name="Times New Roman", size=10, bold=True)
+    font_title = Font(name="Times New Roman", size=12, bold=True)
+    font_header = Font(name="Times New Roman", size=9, bold=True)
+    align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    align_top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    align_top_center = Alignment(horizontal="center", vertical="top", wrap_text=True)
+    thin = Side(style="thin")
+    border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    # --- Заголовок документа ---
-    row = 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(COLUMNS))
-    title_cell = ws.cell(row=row, column=1, value="МУЗЫКАЛЬНАЯ СПРАВКА")
-    title_cell.font = Font(name="Arial", size=14, bold=True)
-    title_cell.alignment = Alignment(horizontal="center")
+    # Ширина колонок (A=1 .. J=10, но данные в D..M, сдвиг: col D = col_idx 4)
+    # Используем колонки D-M (4-13) как в оригинале, A-C — объединённые для ОБЩЕСТВО/МП
+    col_offset = 3  # данные начинаются с колонки D (index 4)
 
+    # Установим ширины
+    ws.column_dimensions["A"].width = 3
+    ws.column_dimensions["B"].width = 3
+    ws.column_dimensions["C"].width = 3
+    for i, (_, w) in enumerate(RAO_COLUMNS):
+        col_letter = chr(ord("D") + i)
+        ws.column_dimensions[col_letter].width = w
+
+    # --- Шапка: Приложение №1 ---
     row = 2
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(COLUMNS))
-    subtitle = f"Программа: {program_name}" if program_name else ""
-    date_str = datetime.now().strftime("%d.%m.%Y")
-    ws.cell(row=row, column=1, value=f"{subtitle}   Дата: {date_str}".strip())
-    ws.cell(row=row, column=1).font = Font(name="Arial", size=10)
-    ws.cell(row=row, column=1).alignment = Alignment(horizontal="center")
-
-    # --- Заголовки колонок ---
+    ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
+    ws.cell(row=row, column=10, value="Приложение № 1").font = font_main
+    row = 3
+    ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
+    ws.cell(row=row, column=10, value="к Лицензионному договору").font = font_main
     row = 4
-    for col_idx, (col_name, col_width) in enumerate(COLUMNS, 1):
-        cell = ws.cell(row=row, column=col_idx, value=col_name)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-        ws.column_dimensions[cell.column_letter].width = col_width
+    ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
+    contract_text = f'от «__» ____20__г. № {contract_no}/ТВ' if contract_no else 'от «__» ____20__г. № ____/ТВ'
+    ws.cell(row=row, column=10, value=contract_text).font = font_main
+    row = 5
+    ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
+    contractor_text = f"между РАО и {contractor}" if contractor else "между РАО и ________________________"
+    ws.cell(row=row, column=10, value=contractor_text).font = font_main
+
+    # --- Боковые подписи: ОБЩЕСТВО / МП ---
+    # (В оригинале они вертикальные в колонках A-C, но для простоты пропускаем
+    #  или добавляем позже вручную)
+
+    # --- Заголовок ---
+    row = 8
+    ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=13)
+    ws.cell(row=row, column=4, value="ОТЧЕТ").font = font_title
+    ws.cell(row=row, column=4).alignment = align_center
+
+    row = 9
+    ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=13)
+    ws.cell(row=row, column=4, value="об использованных  произведениях").font = font_bold
+    ws.cell(row=row, column=4).alignment = align_center
+
+    row = 10
+    ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=13)
+    if not month:
+        month = datetime.now().strftime("%B")  # fallback
+    if not year:
+        year = datetime.now().strftime("%Y")
+    period_text = f"за _____{month}_____(месяц) квартал  {year}  г."
+    ws.cell(row=row, column=4, value=period_text).font = font_main
+    ws.cell(row=row, column=4).alignment = align_center
+
+    # --- Заголовки таблицы (строки 11-12) ---
+    header_row_start = 11
+    for col_i, (col_name, _) in enumerate(RAO_COLUMNS):
+        col_idx = col_offset + 1 + col_i  # D=4, E=5, ...
+        # Объединяем 2 строки для заголовка
+        ws.merge_cells(
+            start_row=header_row_start, start_column=col_idx,
+            end_row=header_row_start + 1, end_column=col_idx,
+        )
+        cell = ws.cell(row=header_row_start, column=col_idx, value=col_name)
+        cell.font = font_header
+        cell.alignment = align_center
+        cell.border = border_all
+        # Нижняя строка тоже с бордером
+        ws.cell(row=header_row_start + 1, column=col_idx).border = border_all
+
+    # --- Строка с номерами колонок ---
+    num_row = header_row_start + 2  # строка 13
+    for col_i in range(len(RAO_COLUMNS)):
+        col_idx = col_offset + 1 + col_i
+        cell = ws.cell(row=num_row, column=col_idx, value=col_i + 1)
+        cell.font = font_main
+        cell.alignment = align_center
+        cell.border = border_all
 
     # --- Данные ---
-    for i, track in enumerate(tracks, 1):
-        row = 4 + i
-        values = [
-            i,
-            track.get("title", ""),
-            track.get("artist", ""),
-            track.get("composer", ""),
-            track.get("album", ""),
-            track.get("year", ""),
-            track.get("duration", ""),
-            track.get("isrc", ""),
-            track.get("publisher", ""),
-            track.get("copyright", ""),
-            track.get("genre", ""),
-            "",  # Примечание — заполняется вручную
-        ]
-        for col_idx, val in enumerate(values, 1):
-            cell = ws.cell(row=row, column=col_idx, value=val)
-            cell.font = cell_font
-            cell.alignment = cell_alignment
-            cell.border = thin_border
+    data_row = num_row + 1  # строка 14
 
-    # --- Итоговая строка ---
-    row = 4 + len(tracks) + 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-    ws.cell(row=row, column=1, value=f"Итого треков: {len(tracks)}")
-    ws.cell(row=row, column=1).font = Font(name="Arial", size=10, bold=True)
+    for prog in programs:
+        prog_name = prog.get("name", "")
+        air_date = prog.get("air_date", "")
+        tracks = prog.get("tracks", [])
 
-    # Суммарный хронометраж
-    total_seconds = sum(t.get("duration_seconds", 0) for t in tracks)
-    hours, remainder = divmod(int(total_seconds), 3600)
-    minutes, secs = divmod(remainder, 60)
-    total_dur = f"{hours:02d}:{minutes:02d}:{secs:02d}"
-    ws.cell(row=row, column=7, value=total_dur)
-    ws.cell(row=row, column=7).font = Font(name="Arial", size=10, bold=True)
-    ws.cell(row=row, column=7).border = thin_border
+        first_row_of_program = data_row
 
-    # --- Подписи ---
-    row += 2
-    ws.cell(row=row, column=1, value="Звукорежиссёр: _________________ / _________________ /")
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-    row += 1
-    ws.cell(row=row, column=1, value="Дата: ________________")
+        for t_idx, track in enumerate(tracks):
+            title = track.get("title", "")
+            composer = track.get("composer", "")
+            lyricist = track.get("lyricist", "")
+            dur_sec = track.get("duration_seconds", 0)
+            play_count = track.get("play_count", 1)
+            genre = track.get("genre", "пьеса")
+            performer = track.get("performer", "")
+
+            dur_str = _fmt_duration(dur_sec)
+            total_str = _multiply_duration(dur_sec, play_count)
+
+            row_values = [
+                prog_name if t_idx == 0 else "",    # 1. Наименование передачи
+                air_date if t_idx == 0 else "",      # 2. Дата эфира
+                title,                                # 3. Название произведения
+                composer,                             # 4. Композитор
+                lyricist,                             # 5. Автор текста
+                dur_str,                              # 6. Длительность
+                play_count,                           # 7. Кол-во исполнений
+                total_str,                            # 8. Общий хронометраж
+                genre,                                # 9. Жанр
+                performer,                            # 10. Исполнитель
+            ]
+
+            for col_i, val in enumerate(row_values):
+                col_idx = col_offset + 1 + col_i
+                cell = ws.cell(row=data_row, column=col_idx, value=val)
+                cell.font = font_main
+                cell.alignment = align_top_center if col_i in (1, 5, 6, 7) else align_top_left
+                cell.border = border_all
+
+            data_row += 1
 
     # --- Сохранение ---
     wb.save(output_path)
     return output_path
+
+
+def tracks_to_program(
+    tracks: list[dict],
+    program_name: str,
+    air_date: str,
+    default_genre: str = "пьеса",
+    default_performer: str = "инстр. Анс",
+) -> dict:
+    """Преобразует список метаданных треков в формат программы для отчёта."""
+    program_tracks = []
+    for t in tracks:
+        composer = t.get("artist", "") or t.get("composer", "")
+        program_tracks.append({
+            "title": t.get("title", ""),
+            "composer": composer,
+            "lyricist": "",
+            "duration_seconds": t.get("duration_seconds", 0),
+            "play_count": 1,
+            "genre": t.get("genre", "") or default_genre,
+            "performer": t.get("artist", "") or default_performer,
+        })
+    return {
+        "name": program_name,
+        "air_date": air_date,
+        "tracks": program_tracks,
+    }
 
 
 # --- CLI ---
@@ -139,7 +270,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Заполнение лицензионной музыкальной формы ВГТРК"
+        description="Заполнение отчёта РАО об использованных произведениях (ВГТРК)"
     )
     parser.add_argument(
         "files", nargs="*",
@@ -150,35 +281,75 @@ if __name__ == "__main__":
         help="Директория с аудиофайлами"
     )
     parser.add_argument(
-        "--output", "-o", default="music_license_form.xlsx",
-        help="Имя выходного файла (по умолчанию: music_license_form.xlsx)"
+        "--list", "-l",
+        help="Текстовый файл со списком путей (по одному на строку)"
+    )
+    parser.add_argument(
+        "--output", "-o", default="rao_report.xlsx",
+        help="Имя выходного файла (по умолчанию: rao_report.xlsx)"
     )
     parser.add_argument(
         "--program", "-p", default="",
         help="Название программы/передачи"
     )
     parser.add_argument(
-        "--list", "-l",
-        help="Текстовый файл со списком путей (по одному на строку)"
+        "--date", default="",
+        help="Дата эфира (например: 04.09.25)"
+    )
+    parser.add_argument(
+        "--month", default="",
+        help="Месяц отчёта (например: сентябрь)"
+    )
+    parser.add_argument(
+        "--year", default="",
+        help="Год отчёта (например: 2025)"
+    )
+    parser.add_argument(
+        "--genre", default="пьеса",
+        help="Жанр по умолчанию (по умолчанию: пьеса)"
+    )
+    parser.add_argument(
+        "--performer", default="инстр. Анс",
+        help="Исполнитель по умолчанию (по умолчанию: инстр. Анс)"
+    )
+    parser.add_argument(
+        "--json", dest="json_input",
+        help="JSON-файл с полной структурой (несколько программ)"
     )
 
     args = parser.parse_args()
 
-    # Собираем список файлов
+    # --- Режим 1: JSON с несколькими программами ---
+    if args.json_input:
+        with open(args.json_input, encoding="utf-8") as f:
+            data = json.load(f)
+        programs = data.get("programs", data if isinstance(data, list) else [data])
+        output = create_rao_report(
+            programs,
+            args.output,
+            month=data.get("month", args.month),
+            quarter=data.get("quarter", ""),
+            year=data.get("year", args.year),
+        )
+        print(f"Отчёт РАО сохранён: {os.path.abspath(output)}")
+        sys.exit(0)
+
+    # --- Режим 2: аудиофайлы ---
     file_paths = []
     if args.files:
         file_paths.extend(args.files)
     if args.list:
         with open(args.list, encoding="utf-8") as f:
             file_paths.extend(line.strip() for line in f if line.strip())
+
     if args.dir:
         tracks = extract_from_directory(args.dir)
-    else:
-        if not file_paths:
-            parser.print_help()
-            print("\nОшибка: укажите файлы, директорию (--dir) или список (--list)")
-            sys.exit(1)
+    elif file_paths:
         tracks = extract_from_list(file_paths)
+    else:
+        parser.print_help()
+        print("\nОшибка: укажите файлы, --dir, --list или --json")
+        sys.exit(1)
 
     if not tracks:
         print("Не найдено аудиофайлов.")
@@ -187,9 +358,26 @@ if __name__ == "__main__":
     # Выводим что нашли
     print(f"\nНайдено треков: {len(tracks)}")
     for i, t in enumerate(tracks, 1):
-        status = "OK" if "error" not in t else t["error"]
-        print(f"  {i}. {t.get('artist', '?')} — {t.get('title', '?')} [{t.get('duration', '?')}] ({status})")
+        err = t.get("error", "")
+        status = f"!! {err}" if err else "OK"
+        artist = t.get("artist") or t.get("composer") or "?"
+        print(f"  {i}. {artist} — {t.get('title', '?')} [{t.get('duration', '?')}] ({status})")
 
-    # Генерируем Excel
-    output = create_excel(tracks, args.output, args.program)
-    print(f"\nФорма сохранена: {os.path.abspath(output)}")
+    # Формируем программу
+    program = tracks_to_program(
+        tracks,
+        program_name=args.program or "Без названия",
+        air_date=args.date or datetime.now().strftime("%d.%m.%y"),
+        default_genre=args.genre,
+        default_performer=args.performer,
+    )
+
+    output = create_rao_report(
+        [program],
+        args.output,
+        month=args.month,
+        year=args.year,
+    )
+    print(f"\nОтчёт РАО сохранён: {os.path.abspath(output)}")
+    print("\nПодсказка: для нескольких передач используйте --json с файлом структуры.")
+    print("Пример JSON: python fill_form.py --json example_report.json")
