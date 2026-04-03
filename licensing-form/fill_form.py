@@ -255,12 +255,9 @@ def create_rao_report(
     data_row = last_data_row + MIN_EMPTY_ROWS + 2
 
     # ============================================================
-    # ПРАВИЛА ЗАПОЛНЕНИЯ ОТЧЕТА
+    # ПРАВИЛА ЗАПОЛНЕНИЯ ОТЧЕТА (с рамкой вокруг всего блока)
     # ============================================================
     rules_start = data_row
-    ws.merge_cells(start_row=rules_start, start_column=4, end_row=rules_start, end_column=13)
-    ws.cell(row=rules_start, column=4, value="Правила заполнения отчета:").font = font_bold
-
     rules = [
         "* Приложение № 1 заполняется для произведений, используемых в передачах, анонсах, в качестве музыкального оформления, заставках и т.п.;",
         "* данные по анонсам предоставляются отдельным отчетом по форме Приложения № 1;",
@@ -274,38 +271,26 @@ def create_rao_report(
         "* отчет составляется с использованием шрифта размером не менее 12 пунктов;",
         "* все страницы отчета должны быть пронумерованы и заверены печатью и подписью.",
     ]
+    rules_end = rules_start + len(rules)  # last rule row (inclusive)
 
-    # Рамка вокруг заголовка правил
-    border_top_left = Border(left=thin, top=thin)
-    border_top_right = Border(right=thin, top=thin)
-    border_top = Border(top=thin)
-    border_left_only = Border(left=thin)
-    border_right_only = Border(right=thin)
-    border_bottom_left = Border(left=thin, bottom=thin)
-    border_bottom_right = Border(right=thin, bottom=thin)
+    # Header row: top + left + right borders (merged D:M)
+    ws.merge_cells(start_row=rules_start, start_column=4, end_row=rules_start, end_column=13)
+    cell_rh = ws.cell(row=rules_start, column=4, value="Правила заполнения отчета:")
+    cell_rh.font = font_bold
+    cell_rh.border = Border(left=thin, right=thin, top=thin)
 
-    # Верхняя граница заголовка правил
-    ws.cell(row=rules_start, column=4).border = border_top_left
-    for c in range(5, 13):
-        ws.cell(row=rules_start, column=c).border = Border(top=thin)
-    ws.cell(row=rules_start, column=13).border = border_top_right
-
-    rules_last_row = rules_start + len(rules)
-
+    # Rule rows: left + right borders on merged cell (top-left of range);
+    # last row also gets bottom border
     for i, rule in enumerate(rules):
         r = rules_start + 1 + i
         ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=13)
         cell = ws.cell(row=r, column=4, value=rule)
         cell.font = font_rules
         cell.alignment = align_top_left
-        # Левая граница
-        cell.border = Border(left=thin, bottom=thin if r == rules_last_row else None)
-        # Правая граница
-        ws.cell(row=r, column=13).border = Border(right=thin, bottom=thin if r == rules_last_row else None)
-
-    # Нижняя граница последней строки правил
-    for c in range(5, 13):
-        ws.cell(row=rules_last_row, column=c).border = border_bottom
+        if r == rules_end:
+            cell.border = Border(left=thin, right=thin, bottom=thin)
+        else:
+            cell.border = border_lr
 
     # ============================================================
     # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (колонки A-B, вверху)
@@ -334,6 +319,7 @@ def create_rao_report(
     # ============================================================
     # БОКОВЫЕ ПОДПИСИ: ПОЛЬЗОВАТЕЛЬ (колонки A-B, внизу)
     # ============================================================
+    # ПОЛЬЗОВАТЕЛЬ — 7 строк, начиная за 4 строки до rules_start
     footer_side_start = rules_start - 4
     ws.merge_cells(start_row=footer_side_start, start_column=1, end_row=footer_side_start + 6, end_column=1)
     cell_p = ws.cell(row=footer_side_start, column=1, value="ПОЛЬЗОВАТЕЛЬ")
@@ -344,21 +330,21 @@ def create_rao_report(
     mp_row = footer_side_start + 7
     ws.cell(row=mp_row, column=1, value="М.П.").font = font_main
 
-    # (подпись) в колонке B
+    # (                           ) в колонке B
     ws.merge_cells(start_row=mp_row, start_column=2, end_row=mp_row + 2, end_column=2)
     ws.cell(row=mp_row, column=2, value="(                           )").font = font_main
 
     # ============================================================
     # ПОДПИСИ ВНИЗУ
     # ============================================================
-    sign_row = rules_start + len(rules) + 4
+    sign_row = rules_end + 4
 
     ws.merge_cells(start_row=sign_row, start_column=4, end_row=sign_row, end_column=6)
     cell_mp = ws.cell(row=sign_row, column=4, value="          М.П. _________________")
     cell_mp.font = font_main
     cell_mp.alignment = align_left
 
-    ws.merge_cells(start_row=sign_row, start_column=7, end_row=sign_row, end_column=9)
+    ws.merge_cells(start_row=sign_row, start_column=7, end_row=sign_row, end_column=8)
     ws.cell(row=sign_row, column=7, value="_____________________").font = font_main
 
     ws.merge_cells(start_row=sign_row, start_column=10, end_row=sign_row, end_column=11)
@@ -370,7 +356,7 @@ def create_rao_report(
     cell_sig.font = font_main
     cell_sig.alignment = align_left
 
-    ws.merge_cells(start_row=sign_row + 1, start_column=7, end_row=sign_row + 1, end_column=9)
+    ws.merge_cells(start_row=sign_row + 1, start_column=7, end_row=sign_row + 1, end_column=8)
     ws.cell(row=sign_row + 1, column=7, value="(должность, ФИО руководителя)").font = font_main
 
     # --- Сохранение ---
