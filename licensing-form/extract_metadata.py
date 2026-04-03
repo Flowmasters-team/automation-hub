@@ -166,9 +166,9 @@ def extract_metadata(filepath: str) -> dict:
             # Пробуем шаблон "Исполнитель - Название"
             if " - " in stem:
                 parts = stem.split(" - ", 1)
-                if not result["artist"] and not result["composer"]:
+                if not result["artist"]:
                     result["artist"] = parts[0].strip()
-                    result["composer"] = parts[0].strip()
+                # НЕ заполняем composer из имени файла — только через "Найти теги"
                 result["title"] = parts[1].strip()
             else:
                 result["title"] = stem

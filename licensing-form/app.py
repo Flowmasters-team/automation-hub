@@ -11,8 +11,17 @@ import sys
 import re
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
 from datetime import datetime
+
+# Modern UI theme
+try:
+    import ttkbootstrap as ttk
+    from ttkbootstrap.constants import *
+    MODERN_UI = True
+except ImportError:
+    from tkinter import ttk
+    MODERN_UI = False
 
 from extract_metadata import extract_metadata
 from fill_form import create_rao_report
@@ -202,7 +211,7 @@ class ProgramFrame:
         if col_idx == 3:
             row_idx = self.tree.index(item)
             track = self.tracks[row_idx]
-            if not (track.get("artist") or track.get("composer")):
+            if not track.get("composer"):
                 title = track.get("title", "")
                 answer = messagebox.askyesno(
                     "Найти теги онлайн",
@@ -269,7 +278,7 @@ class ProgramFrame:
         """Запускает поиск тегов в отдельном потоке, чтобы UI не замерзал."""
         targets = [
             (i, t) for i, t in enumerate(self.tracks)
-            if not (t.get("artist") or t.get("composer"))
+            if not t.get("composer")
         ]
         if not targets:
             messagebox.showinfo("Найти теги", "Все треки уже имеют данные о композиторе")
@@ -391,7 +400,7 @@ class ProgramFrame:
     def _refresh_table(self):
         self.tree.delete(*self.tree.get_children())
         for i, t in enumerate(self.tracks, 1):
-            composer = t.get("artist", "") or t.get("composer", "")
+            composer = t.get("composer", "")
             plays = t.get("play_count", 1)
             self.tree.insert("", "end", values=(
                 "✕", i, t.get("title", ""), composer,
@@ -607,6 +616,8 @@ class RaoReportApp:
 def main():
     if DND_AVAILABLE:
         root = TkinterDnD.Tk()
+    elif MODERN_UI:
+        root = ttk.Window(themename="cosmo")
     else:
         root = tk.Tk()
     RaoReportApp(root)

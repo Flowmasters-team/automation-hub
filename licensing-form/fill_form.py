@@ -293,58 +293,44 @@ def create_rao_report(
             cell.border = border_lr
 
     # ============================================================
-    # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (вверху, как в оригинале)
+    # БОКОВЫЕ ПОДПИСИ (точно по оригиналу xls)
     # ============================================================
-    # Колонка A: "ОБЩЕСТВО" вертикально (строки 2-6)
-    ws.merge_cells(start_row=2, start_column=1, end_row=6, end_column=1)
-    cell_o = ws.cell(row=2, column=1, value="ОБЩЕСТВО")
+    # --- ВЕРХ ---
+    # B2:B6 = "ОБЩЕСТВО" вертикально (только колонка B, А пустая!)
+    ws.merge_cells(start_row=2, start_column=2, end_row=6, end_column=2)
+    cell_o = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
     cell_o.font = font_side
     cell_o.alignment = align_vertical
 
-    # Колонка B: "ОБЩЕСТВО" вертикально (строки 2-6)
-    ws.merge_cells(start_row=2, start_column=2, end_row=6, end_column=2)
-    cell_o2 = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
-    cell_o2.font = font_side
-    cell_o2.alignment = align_vertical
+    # A7:A11 = "М.П." вертикально
+    ws.merge_cells(start_row=7, start_column=1, end_row=11, end_column=1)
+    cell_mp = ws.cell(row=7, column=1, value="М.П.")
+    cell_mp.font = font_main
+    cell_mp.alignment = align_vertical
 
-    # Увеличиваем высоту строк 2-6 чтобы вертикальный текст поместился
-    for r in range(2, 7):
-        ws.row_dimensions[r].height = 20
-
-    # М.П. (строка 7)
-    ws.cell(row=7, column=1, value="М.П.").font = font_main
-
-    # Строка 8: М.П. в колонке B (как в оригинале — рядом с ОТЧЕТ)
-    ws.cell(row=8, column=2, value="М.П.").font = font_main
-
-    # Колонка C: "(И.А.Базилевский)" вертикально (строки 9-13, рядом с заголовками таблицы)
-    ws.merge_cells(start_row=9, start_column=3, end_row=13, end_column=3)
-    cell_baz = ws.cell(row=9, column=3, value="(И.А.Базилевский)")
+    # B7:B13 = "(И.А.Базилевский)" вертикально
+    ws.merge_cells(start_row=7, start_column=2, end_row=13, end_column=2)
+    cell_baz = ws.cell(row=7, column=2, value="(И.А.Базилевский)")
     cell_baz.font = font_main
     cell_baz.alignment = align_vertical
 
-    # ============================================================
-    # БОКОВЫЕ ПОДПИСИ: ПОЛЬЗОВАТЕЛЬ (внизу, как в оригинале)
-    # ============================================================
-    # ПОЛЬЗОВАТЕЛЬ вертикально — 8 строк перед правилами
-    footer_side_start = rules_start - 6
-    ws.merge_cells(start_row=footer_side_start, start_column=1, end_row=footer_side_start + 8, end_column=1)
-    cell_p = ws.cell(row=footer_side_start, column=1, value="ПОЛЬЗОВАТЕЛЬ")
+    # --- НИЗ ---
+    # B[rules_start-5 : rules_start] = "ПОЛЬЗОВАТЕЛЬ" вертикально
+    user_start = rules_start - 5
+    ws.merge_cells(start_row=user_start, start_column=2, end_row=rules_start, end_column=2)
+    cell_p = ws.cell(row=user_start, column=2, value="ПОЛЬЗОВАТЕЛЬ")
     cell_p.font = font_side
     cell_p.alignment = align_vertical
 
-    # БАЗИЛЕВСКИЙ в колонке B вертикально (рядом с ПОЛЬЗОВАТЕЛЬ)
-    ws.merge_cells(start_row=footer_side_start, start_column=2, end_row=footer_side_start + 8, end_column=2)
-    cell_baz2 = ws.cell(row=footer_side_start, column=2, value="БАЗИЛЕВСКИЙ")
-    cell_baz2.font = font_side
-    cell_baz2.alignment = align_vertical
+    # A[rules_start+1 : rules_start+5] = "М.П." вертикально
+    ws.merge_cells(start_row=rules_start + 1, start_column=1, end_row=rules_start + 5, end_column=1)
+    cell_mp2 = ws.cell(row=rules_start + 1, column=1, value="М.П.")
+    cell_mp2.font = font_main
+    cell_mp2.alignment = align_vertical
 
-    # М.П. (под ПОЛЬЗОВАТЕЛЬ)
-    mp_row = footer_side_start + 9
-    ws.cell(row=mp_row, column=1, value="М.П.").font = font_main
-
-    # (                           ) в колонке B
-    ws.cell(row=mp_row + 1, column=1, value="(                           )").font = font_main
+    # B[rules_start+1 : rules_end+4] = "(                           )" вертикально
+    ws.merge_cells(start_row=rules_start + 1, start_column=2, end_row=rules_end + 4, end_column=2)
+    ws.cell(row=rules_start + 1, column=2, value="(                           )").font = font_main
 
     # ============================================================
     # ПОДПИСИ ВНИЗУ
