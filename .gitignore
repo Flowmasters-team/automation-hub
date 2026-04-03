@@ -1,0 +1,4 @@
+licensing-form/build/
+licensing-form/__pycache__/
+licensing-form/*.spec
+*.pyc
