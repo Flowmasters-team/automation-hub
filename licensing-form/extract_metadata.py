@@ -160,9 +160,18 @@ def extract_metadata(filepath: str) -> dict:
             result["copyright"] = _get_tag(audio, ["Copyright"])
             result["isrc"] = _get_tag(audio, ["WM/ISRC"])
 
-        # Fallback — если title пустой, используем имя файла без расширения
+        # Fallback — если title пустой, парсим имя файла
         if not result["title"]:
-            result["title"] = Path(filepath).stem
+            stem = Path(filepath).stem
+            # Пробуем шаблон "Исполнитель - Название"
+            if " - " in stem:
+                parts = stem.split(" - ", 1)
+                if not result["artist"] and not result["composer"]:
+                    result["artist"] = parts[0].strip()
+                    result["composer"] = parts[0].strip()
+                result["title"] = parts[1].strip()
+            else:
+                result["title"] = stem
 
     except Exception as e:
         result["error"] = f"Ошибка чтения: {e}"

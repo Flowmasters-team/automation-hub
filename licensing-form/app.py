@@ -97,10 +97,64 @@ class ProgramFrame:
         self.tree.column("duration", width=80, anchor="center")
         self.tree.column("filename", width=200)
 
+        # Двойной клик для редактирования
+        self.tree.bind("<Double-1>", self._on_double_click)
+
         # Drag-and-drop
         if DND_AVAILABLE:
             self.tree.drop_target_register(DND_FILES)
             self.tree.dnd_bind("<<Drop>>", self._on_drop)
+
+    def _on_double_click(self, event):
+        """Редактирование ячейки по двойному клику."""
+        item = self.tree.identify_row(event.y)
+        col = self.tree.identify_column(event.x)
+        if not item or not col:
+            return
+        col_idx = int(col.replace("#", "")) - 1
+        # Разрешаем редактировать: title(1), composer(2), duration(3)
+        editable = {1: "title", 2: "composer", 3: "duration"}
+        if col_idx not in editable:
+            return
+
+        # Координаты ячейки
+        x, y, w, h = self.tree.bbox(item, col)
+        value = self.tree.item(item, "values")[col_idx]
+
+        entry = tk.Entry(self.tree, width=w // 8)
+        entry.place(x=x, y=y, width=w, height=h)
+        entry.insert(0, value)
+        entry.select_range(0, tk.END)
+        entry.focus()
+
+        row_idx = self.tree.index(item)
+        field = editable[col_idx]
+
+        def save(e=None):
+            new_val = entry.get().strip()
+            entry.destroy()
+            track = self.tracks[row_idx]
+            if field == "title":
+                track["title"] = new_val
+            elif field == "composer":
+                track["artist"] = new_val
+                track["composer"] = new_val
+            elif field == "duration":
+                track["duration"] = new_val
+                # Пробуем пересчитать секунды из M:SS или H:MM:SS
+                try:
+                    parts = new_val.split(":")
+                    if len(parts) == 3:
+                        track["duration_seconds"] = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                    elif len(parts) == 2:
+                        track["duration_seconds"] = int(parts[0]) * 60 + int(parts[1])
+                except ValueError:
+                    pass
+            self._refresh_table()
+
+        entry.bind("<Return>", save)
+        entry.bind("<FocusOut>", save)
+        entry.bind("<Escape>", lambda e: entry.destroy())
 
     def _on_drop(self, event):
         files = _parse_dnd_paths(event.data)
