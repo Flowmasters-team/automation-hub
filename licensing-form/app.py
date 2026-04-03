@@ -14,13 +14,13 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from datetime import datetime
 
-# Modern UI theme
+from tkinter import ttk
+
+# Modern UI theme (Sun Valley — Windows 11 style)
 try:
-    import ttkbootstrap as ttk
-    from ttkbootstrap.constants import *
+    import sv_ttk
     MODERN_UI = True
 except ImportError:
-    from tkinter import ttk
     MODERN_UI = False
 
 from extract_metadata import extract_metadata
@@ -616,10 +616,10 @@ class RaoReportApp:
 def main():
     if DND_AVAILABLE:
         root = TkinterDnD.Tk()
-    elif MODERN_UI:
-        root = ttk.Window(themename="cosmo")
     else:
         root = tk.Tk()
+    if MODERN_UI:
+        sv_ttk.set_theme("light")
     RaoReportApp(root)
     root.mainloop()
 
