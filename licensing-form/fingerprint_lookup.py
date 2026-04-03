@@ -15,7 +15,7 @@ from urllib.error import URLError, HTTPError
 
 # AcoustID API
 ACOUSTID_URL = "https://api.acoustid.org/v2/lookup"
-ACOUSTID_KEY = "8XaBELgH"  # MusicBrainz Picard public key
+ACOUSTID_KEY = "cSpUJKpD"
 MB_BASE = "https://musicbrainz.org/ws/2"
 USER_AGENT = "RAO_Report/1.0 (flowmasters.ru)"
 
