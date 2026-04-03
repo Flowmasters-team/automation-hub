@@ -128,8 +128,8 @@ def create_rao_report(
 
     # --- Ширины колонок ---
     ws.column_dimensions["A"].width = 3
-    ws.column_dimensions["B"].width = 4
-    ws.column_dimensions["C"].width = 4
+    ws.column_dimensions["B"].width = 5
+    ws.column_dimensions["C"].width = 5
     for i, (_, w) in enumerate(RAO_COLUMNS):
         col_letter = chr(ord("D") + i)
         ws.column_dimensions[col_letter].width = w
@@ -275,29 +275,54 @@ def create_rao_report(
         "* все страницы отчета должны быть пронумерованы и заверены печатью и подписью.",
     ]
 
+    # Рамка вокруг заголовка правил
+    border_top_left = Border(left=thin, top=thin)
+    border_top_right = Border(right=thin, top=thin)
+    border_top = Border(top=thin)
+    border_left_only = Border(left=thin)
+    border_right_only = Border(right=thin)
+    border_bottom_left = Border(left=thin, bottom=thin)
+    border_bottom_right = Border(right=thin, bottom=thin)
+
+    # Верхняя граница заголовка правил
+    ws.cell(row=rules_start, column=4).border = border_top_left
+    for c in range(5, 13):
+        ws.cell(row=rules_start, column=c).border = Border(top=thin)
+    ws.cell(row=rules_start, column=13).border = border_top_right
+
+    rules_last_row = rules_start + len(rules)
+
     for i, rule in enumerate(rules):
         r = rules_start + 1 + i
         ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=13)
         cell = ws.cell(row=r, column=4, value=rule)
         cell.font = font_rules
         cell.alignment = align_top_left
+        # Левая граница
+        cell.border = Border(left=thin, bottom=thin if r == rules_last_row else None)
+        # Правая граница
+        ws.cell(row=r, column=13).border = Border(right=thin, bottom=thin if r == rules_last_row else None)
+
+    # Нижняя граница последней строки правил
+    for c in range(5, 13):
+        ws.cell(row=rules_last_row, column=c).border = border_bottom
 
     # ============================================================
     # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (колонки A-B, вверху)
     # ============================================================
-    # Колонка A: "ОБЩЕСТВО" вертикально (строки 2-5)
-    ws.merge_cells(start_row=2, start_column=1, end_row=5, end_column=1)
+    # Колонка A: "ОБЩЕСТВО" вертикально (строки 2-6)
+    ws.merge_cells(start_row=2, start_column=1, end_row=6, end_column=1)
     cell_o = ws.cell(row=2, column=1, value="ОБЩЕСТВО")
     cell_o.font = font_side
     cell_o.alignment = align_vertical
 
-    # Колонка B: "ОБЩЕСТВО" вертикально (дубль, как в оригинале)
-    ws.merge_cells(start_row=2, start_column=2, end_row=5, end_column=2)
+    # Колонка B: "ОБЩЕСТВО" вертикально (дубль, как в оригинале, строки 2-6)
+    ws.merge_cells(start_row=2, start_column=2, end_row=6, end_column=2)
     cell_o2 = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
     cell_o2.font = font_side
     cell_o2.alignment = align_vertical
 
-    # М.П. (строка 7)
+    # М.П. (строка 7, колонка 1)
     ws.cell(row=7, column=1, value="М.П.").font = font_main
 
     # Колонка C: "(И.А.Базилевский)" вертикально (строки 8-13)

@@ -18,7 +18,7 @@ from fill_form import create_rao_report
 
 # Календарик для даты
 try:
-    from tkcalendar import DateEntry
+    from tkcalendar import Calendar
     CALENDAR_AVAILABLE = True
 except ImportError:
     CALENDAR_AVAILABLE = False
@@ -61,15 +61,13 @@ class ProgramFrame:
         ttk.Entry(params, textvariable=self.name_var, width=40).pack(side="left", padx=(5, 15))
 
         ttk.Label(params, text="Дата эфира:").pack(side="left")
+        self.date_var = tk.StringVar(value=datetime.now().strftime("%d.%m.%y"))
+        date_frame = ttk.Frame(params)
+        date_frame.pack(side="left", padx=(5, 10))
+        self.date_entry_widget = ttk.Entry(date_frame, textvariable=self.date_var, width=10)
+        self.date_entry_widget.pack(side="left")
         if CALENDAR_AVAILABLE:
-            self.date_entry = DateEntry(
-                params, width=10, date_pattern="dd.MM.yy",
-                locale="ru_RU", firstweekday="monday",
-            )
-            self.date_entry.pack(side="left", padx=(5, 10))
-        else:
-            self.date_var = tk.StringVar(value=datetime.now().strftime("%d.%m.%y"))
-            ttk.Entry(params, textvariable=self.date_var, width=10).pack(side="left", padx=(5, 10))
+            ttk.Button(date_frame, text="📅", width=3, command=self._show_calendar).pack(side="left")
 
         ttk.Button(params, text="Удалить передачу", command=self._remove).pack(side="right")
 
@@ -125,6 +123,43 @@ class ProgramFrame:
         if DND_AVAILABLE:
             self.tree.drop_target_register(DND_FILES)
             self.tree.dnd_bind("<<Drop>>", self._on_drop)
+
+    def _show_calendar(self):
+        """Открывает окно-календарь для выбора даты."""
+        top = tk.Toplevel(self.app.root)
+        top.title("Выберите дату")
+        top.resizable(False, False)
+        top.grab_set()
+
+        # Парсим текущую дату из поля
+        try:
+            parts = self.date_var.get().split(".")
+            d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+            if y < 100:
+                y += 2000
+        except (ValueError, IndexError):
+            now = datetime.now()
+            d, m, y = now.day, now.month, now.year
+
+        cal = Calendar(
+            top, selectmode="day", year=y, month=m, day=d,
+            firstweekday="monday", locale="ru_RU",
+            showweeknumbers=False,
+        )
+        cal.pack(padx=10, pady=10)
+
+        def on_select():
+            sel = cal.selection_get()
+            self.date_var.set(sel.strftime("%d.%m.%y"))
+            top.destroy()
+
+        ttk.Button(top, text="Выбрать", command=on_select).pack(pady=(0, 10))
+
+        # Позиционируем возле поля даты
+        top.update_idletasks()
+        x = self.date_entry_widget.winfo_rootx()
+        y_pos = self.date_entry_widget.winfo_rooty() + self.date_entry_widget.winfo_height()
+        top.geometry(f"+{x}+{y_pos}")
 
     def _on_click(self, event):
         """Обработка кликов по кнопкам ✕, ◄, ►."""
@@ -269,8 +304,6 @@ class ProgramFrame:
             ))
 
     def get_date(self):
-        if CALENDAR_AVAILABLE:
-            return self.date_entry.get()
         return self.date_var.get().strip()
 
     def get_program_data(self):
