@@ -275,14 +275,11 @@ class ProgramFrame:
         entry.bind("<Escape>", lambda e: entry.destroy())
 
     def _find_tags_async(self):
-        """Запускает поиск тегов в отдельном потоке, чтобы UI не замерзал."""
-        targets = [
-            (i, t) for i, t in enumerate(self.tracks)
-            if not t.get("composer")
-        ]
-        if not targets:
-            messagebox.showinfo("Найти теги", "Все треки уже имеют данные о композиторе")
+        """Запускает поиск тегов в отдельном потоке. Обновляет composer если нашёл."""
+        if not self.tracks:
+            messagebox.showinfo("Найти теги", "Нет треков для поиска")
             return
+        targets = [(i, t) for i, t in enumerate(self.tracks)]
 
         self.app.status_var.set(f"Поиск тегов… (0 / {len(targets)})")
         self.app.root.update_idletasks()

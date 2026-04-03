@@ -115,7 +115,7 @@ def create_rao_report(
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
     align_top_center = Alignment(horizontal="center", vertical="top", wrap_text=True)
-    align_vertical = Alignment(text_rotation=90, horizontal="center", vertical="center", wrap_text=True)
+    align_vertical = Alignment(text_rotation=255, horizontal="center", vertical="center", wrap_text=True)
     thin = Side(style="thin")
     border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
     border_left = Border(left=thin)
@@ -330,7 +330,9 @@ def create_rao_report(
 
     # B[rules_start+1 : rules_end+4] = "(                           )" вертикально
     ws.merge_cells(start_row=rules_start + 1, start_column=2, end_row=rules_end + 4, end_column=2)
-    ws.cell(row=rules_start + 1, column=2, value="(                           )").font = font_main
+    cell_brk = ws.cell(row=rules_start + 1, column=2, value="(                           )")
+    cell_brk.font = font_main
+    cell_brk.alignment = align_vertical
 
     # ============================================================
     # ПОДПИСИ ВНИЗУ
