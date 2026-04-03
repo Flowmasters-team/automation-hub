@@ -109,26 +109,34 @@ def create_rao_report(
     font_bold = Font(name="Times New Roman", size=10, bold=True)
     font_title = Font(name="Times New Roman", size=12, bold=True)
     font_header = Font(name="Times New Roman", size=9, bold=True)
+    font_rules = Font(name="Times New Roman", size=9)
+    font_side = Font(name="Times New Roman", size=10, bold=True)
     align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
     align_top_center = Alignment(horizontal="center", vertical="top", wrap_text=True)
+    align_vertical = Alignment(text_rotation=90, horizontal="center", vertical="center", wrap_text=True)
     thin = Side(style="thin")
     border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
+    border_left = Border(left=thin)
+    border_right = Border(right=thin)
+    border_bottom = Border(bottom=thin)
+    border_lr = Border(left=thin, right=thin)
 
-    # Ширина колонок (A=1 .. J=10, но данные в D..M, сдвиг: col D = col_idx 4)
-    # Используем колонки D-M (4-13) как в оригинале, A-C — объединённые для ОБЩЕСТВО/МП
     col_offset = 3  # данные начинаются с колонки D (index 4)
+    MIN_EMPTY_ROWS = 30  # минимум пустых строк после данных (как в оригинале)
 
-    # Установим ширины
+    # --- Ширины колонок ---
     ws.column_dimensions["A"].width = 3
-    ws.column_dimensions["B"].width = 3
-    ws.column_dimensions["C"].width = 3
+    ws.column_dimensions["B"].width = 4
+    ws.column_dimensions["C"].width = 4
     for i, (_, w) in enumerate(RAO_COLUMNS):
         col_letter = chr(ord("D") + i)
         ws.column_dimensions[col_letter].width = w
 
-    # --- Шапка: Приложение №1 ---
+    # ============================================================
+    # ШАПКА: Приложение №1
+    # ============================================================
     row = 2
     ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
     ws.cell(row=row, column=10, value="Приложение № 1").font = font_main
@@ -143,12 +151,13 @@ def create_rao_report(
     ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
     contractor_text = f"между РАО и {contractor}" if contractor else "между РАО и ________________________"
     ws.cell(row=row, column=10, value=contractor_text).font = font_main
+    row = 6
+    ws.merge_cells(start_row=row, start_column=10, end_row=row, end_column=13)
+    ws.cell(row=row, column=10, value="_______________________________________").font = font_main
 
-    # --- Боковые подписи: ОБЩЕСТВО / МП ---
-    # (В оригинале они вертикальные в колонках A-C, но для простоты пропускаем
-    #  или добавляем позже вручную)
-
-    # --- Заголовок ---
+    # ============================================================
+    # ЗАГОЛОВОК: ОТЧЕТ
+    # ============================================================
     row = 8
     ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=13)
     ws.cell(row=row, column=4, value="ОТЧЕТ").font = font_title
@@ -162,18 +171,19 @@ def create_rao_report(
     row = 10
     ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=13)
     if not month:
-        month = datetime.now().strftime("%B")  # fallback
+        month = datetime.now().strftime("%B")
     if not year:
         year = datetime.now().strftime("%Y")
     period_text = f"за _____{month}_____(месяц) квартал  {year}  г."
     ws.cell(row=row, column=4, value=period_text).font = font_main
     ws.cell(row=row, column=4).alignment = align_center
 
-    # --- Заголовки таблицы (строки 11-12) ---
+    # ============================================================
+    # ЗАГОЛОВКИ ТАБЛИЦЫ (строки 11-12) + номера (13)
+    # ============================================================
     header_row_start = 11
     for col_i, (col_name, _) in enumerate(RAO_COLUMNS):
-        col_idx = col_offset + 1 + col_i  # D=4, E=5, ...
-        # Объединяем 2 строки для заголовка
+        col_idx = col_offset + 1 + col_i
         ws.merge_cells(
             start_row=header_row_start, start_column=col_idx,
             end_row=header_row_start + 1, end_column=col_idx,
@@ -182,10 +192,8 @@ def create_rao_report(
         cell.font = font_header
         cell.alignment = align_center
         cell.border = border_all
-        # Нижняя строка тоже с бордером
         ws.cell(row=header_row_start + 1, column=col_idx).border = border_all
 
-    # --- Строка с номерами колонок ---
     num_row = header_row_start + 2  # строка 13
     for col_i in range(len(RAO_COLUMNS)):
         col_idx = col_offset + 1 + col_i
@@ -194,15 +202,15 @@ def create_rao_report(
         cell.alignment = align_center
         cell.border = border_all
 
-    # --- Данные ---
+    # ============================================================
+    # ДАННЫЕ
+    # ============================================================
     data_row = num_row + 1  # строка 14
 
     for prog in programs:
         prog_name = prog.get("name", "")
         air_date = prog.get("air_date", "")
         tracks = prog.get("tracks", [])
-
-        first_row_of_program = data_row
 
         for t_idx, track in enumerate(tracks):
             title = track.get("title", "")
@@ -218,16 +226,11 @@ def create_rao_report(
             time_fmt = 'h:mm:ss'
 
             row_values = [
-                prog_name if t_idx == 0 else "",    # 1. Наименование передачи
-                air_date if t_idx == 0 else "",      # 2. Дата эфира
-                title,                                # 3. Название произведения
-                composer,                             # 4. Композитор
-                lyricist,                             # 5. Автор текста
-                dur_excel,                            # 6. Длительность (Excel time)
-                play_count,                           # 7. Кол-во исполнений
-                total_excel,                          # 8. Общий хронометраж (Excel time)
-                genre,                                # 9. Жанр
-                performer,                            # 10. Исполнитель
+                prog_name if t_idx == 0 else "",
+                air_date if t_idx == 0 else "",
+                title, composer, lyricist,
+                dur_excel, play_count, total_excel,
+                genre, performer,
             ]
 
             for col_i, val in enumerate(row_values):
@@ -236,19 +239,24 @@ def create_rao_report(
                 cell.font = font_main
                 cell.alignment = align_top_center if col_i in (1, 5, 6, 7) else align_top_left
                 cell.border = border_all
-                # Формат времени для колонок длительности и хронометража
                 if col_i in (5, 7):
                     cell.number_format = time_fmt
 
             data_row += 1
 
-    # --- Пустая строка-разделитель ---
-    for col_i in range(len(RAO_COLUMNS)):
-        col_idx = col_offset + 1 + col_i
-        ws.cell(row=data_row, column=col_idx).border = border_all
-    data_row += 2
+    # ============================================================
+    # ПУСТЫЕ СТРОКИ С РАМКОЙ (как в оригинале — таблица продолжается)
+    # ============================================================
+    last_data_row = data_row
+    for empty_r in range(last_data_row, last_data_row + MIN_EMPTY_ROWS):
+        for col_i in range(len(RAO_COLUMNS)):
+            col_idx = col_offset + 1 + col_i
+            ws.cell(row=empty_r, column=col_idx).border = border_all
+    data_row = last_data_row + MIN_EMPTY_ROWS + 2
 
-    # --- Правила заполнения отчета ---
+    # ============================================================
+    # ПРАВИЛА ЗАПОЛНЕНИЯ ОТЧЕТА
+    # ============================================================
     rules_start = data_row
     ws.merge_cells(start_row=rules_start, start_column=4, end_row=rules_start, end_column=13)
     ws.cell(row=rules_start, column=4, value="Правила заполнения отчета:").font = font_bold
@@ -267,7 +275,6 @@ def create_rao_report(
         "* все страницы отчета должны быть пронумерованы и заверены печатью и подписью.",
     ]
 
-    font_rules = Font(name="Times New Roman", size=9)
     for i, rule in enumerate(rules):
         r = rules_start + 1 + i
         ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=13)
@@ -275,32 +282,71 @@ def create_rao_report(
         cell.font = font_rules
         cell.alignment = align_top_left
 
-    data_row = rules_start + len(rules) + 3
+    # ============================================================
+    # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (колонки A-B, вверху)
+    # ============================================================
+    # Колонка A: "ОБЩЕСТВО" вертикально (строки 2-5)
+    ws.merge_cells(start_row=2, start_column=1, end_row=5, end_column=1)
+    cell_o = ws.cell(row=2, column=1, value="ОБЩЕСТВО")
+    cell_o.font = font_side
+    cell_o.alignment = align_vertical
 
-    # --- Боковые подписи: ОБЩЕСТВО (шапка) ---
+    # Колонка B: "ОБЩЕСТВО" вертикально (дубль, как в оригинале)
+    ws.merge_cells(start_row=2, start_column=2, end_row=5, end_column=2)
+    cell_o2 = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
+    cell_o2.font = font_side
+    cell_o2.alignment = align_vertical
+
+    # М.П. (строка 7)
     ws.cell(row=7, column=1, value="М.П.").font = font_main
-    ws.cell(row=8, column=2, value="(И.А.Базилевский)").font = font_main
 
-    # --- ПОЛЬЗОВАТЕЛЬ (подвал) ---
-    ws.cell(row=data_row, column=1, value="М.П.").font = font_main
-    ws.cell(row=data_row + 1, column=2, value="(                           )").font = font_main
+    # Колонка C: "(И.А.Базилевский)" вертикально (строки 8-13)
+    ws.merge_cells(start_row=8, start_column=3, end_row=13, end_column=3)
+    cell_baz = ws.cell(row=8, column=3, value="(И.А.Базилевский)")
+    cell_baz.font = font_main
+    cell_baz.alignment = align_vertical
 
-    # --- Подписи внизу ---
-    sign_row = data_row + 4
-    ws.merge_cells(start_row=sign_row, start_column=4, end_row=sign_row, end_column=5)
-    ws.cell(row=sign_row, column=4, value="М.П. _________________").font = font_main
+    # ============================================================
+    # БОКОВЫЕ ПОДПИСИ: ПОЛЬЗОВАТЕЛЬ (колонки A-B, внизу)
+    # ============================================================
+    footer_side_start = rules_start - 4
+    ws.merge_cells(start_row=footer_side_start, start_column=1, end_row=footer_side_start + 6, end_column=1)
+    cell_p = ws.cell(row=footer_side_start, column=1, value="ПОЛЬЗОВАТЕЛЬ")
+    cell_p.font = font_side
+    cell_p.alignment = align_vertical
 
-    ws.merge_cells(start_row=sign_row, start_column=6, end_row=sign_row, end_column=8)
-    ws.cell(row=sign_row, column=6, value="_____________________").font = font_main
+    # М.П. (под ПОЛЬЗОВАТЕЛЬ)
+    mp_row = footer_side_start + 7
+    ws.cell(row=mp_row, column=1, value="М.П.").font = font_main
 
-    ws.cell(row=sign_row, column=9, value="Дата_____________").font = font_main
+    # (подпись) в колонке B
+    ws.merge_cells(start_row=mp_row, start_column=2, end_row=mp_row + 2, end_column=2)
+    ws.cell(row=mp_row, column=2, value="(                           )").font = font_main
+
+    # ============================================================
+    # ПОДПИСИ ВНИЗУ
+    # ============================================================
+    sign_row = rules_start + len(rules) + 4
+
+    ws.merge_cells(start_row=sign_row, start_column=4, end_row=sign_row, end_column=6)
+    cell_mp = ws.cell(row=sign_row, column=4, value="          М.П. _________________")
+    cell_mp.font = font_main
+    cell_mp.alignment = align_left
+
+    ws.merge_cells(start_row=sign_row, start_column=7, end_row=sign_row, end_column=9)
+    ws.cell(row=sign_row, column=7, value="_____________________").font = font_main
+
+    ws.merge_cells(start_row=sign_row, start_column=10, end_row=sign_row, end_column=11)
+    ws.cell(row=sign_row, column=10, value="Дата_____________").font = font_main
 
     # Подписи под линиями
-    ws.merge_cells(start_row=sign_row + 1, start_column=4, end_row=sign_row + 1, end_column=5)
-    ws.cell(row=sign_row + 1, column=4, value="   (подпись)").font = font_main
+    ws.merge_cells(start_row=sign_row + 1, start_column=4, end_row=sign_row + 1, end_column=6)
+    cell_sig = ws.cell(row=sign_row + 1, column=4, value="               (подпись)")
+    cell_sig.font = font_main
+    cell_sig.alignment = align_left
 
-    ws.merge_cells(start_row=sign_row + 1, start_column=6, end_row=sign_row + 1, end_column=8)
-    ws.cell(row=sign_row + 1, column=6, value="          (должность, ФИО руководителя)").font = font_main
+    ws.merge_cells(start_row=sign_row + 1, start_column=7, end_row=sign_row + 1, end_column=9)
+    ws.cell(row=sign_row + 1, column=7, value="(должность, ФИО руководителя)").font = font_main
 
     # --- Сохранение ---
     wb.save(output_path)
