@@ -1,0 +1,90 @@
+{
+    "month": "сентябрь",
+    "year": "2025",
+    "programs": [
+        {
+            "name": "АМВ Вездино Церковь ч1",
+            "air_date": "04.09.25",
+            "tracks": [
+                {
+                    "title": "Gothic Oblivion",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 76,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Journey into Destiny",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 195,
+                    "play_count": 2,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Symphony of Dreams",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 42,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Rise of the Fallen",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 13,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                }
+            ]
+        },
+        {
+            "name": "АМВ Вездино Церковь ч2",
+            "air_date": "05.09.25",
+            "tracks": [
+                {
+                    "title": "Gothic Oblivion",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 42,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Journey into Destiny",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 73,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Symphony of Dreams",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 167,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                },
+                {
+                    "title": "Rise of the Fallen",
+                    "composer": "PP Music (UK)",
+                    "lyricist": "",
+                    "duration_seconds": 194,
+                    "play_count": 1,
+                    "genre": "пьеса",
+                    "performer": "инстр. Анс"
+                }
+            ]
+        }
+    ]
+}
