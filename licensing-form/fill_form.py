@@ -26,7 +26,7 @@ from datetime import datetime
 
 try:
     from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, Border, Side
+    from openpyxl.styles import Font, Alignment, Border, Side, numbers
 except ImportError:
     print("Ошибка: не установлена библиотека openpyxl")
     print("Установите: pip install openpyxl")
@@ -51,7 +51,7 @@ RAO_COLUMNS = [
 
 
 def _fmt_duration(seconds: float) -> str:
-    """Форматирует длительность как M:SS:ss или H:MM:SS."""
+    """Форматирует длит��льность как M:SS:ss или H:MM:SS."""
     total = int(seconds)
     h, rem = divmod(total, 3600)
     m, s = divmod(rem, 60)
@@ -60,8 +60,13 @@ def _fmt_duration(seconds: float) -> str:
     return f"0:{m:02d}:{s:02d}"
 
 
+def _seconds_to_excel_time(seconds: float) -> float:
+    """Конвертирует секунды в дробное число Excel (доля суток)."""
+    return seconds / 86400.0
+
+
 def _multiply_duration(seconds: float, count: int) -> str:
-    """Общий хронометраж = длительность * кол-во исполнений."""
+    """Общий хронометраж = длительност�� * кол-во исполнений."""
     return _fmt_duration(seconds * count)
 
 
@@ -208,8 +213,9 @@ def create_rao_report(
             genre = track.get("genre", "пьеса")
             performer = track.get("performer", "")
 
-            dur_str = _fmt_duration(dur_sec)
-            total_str = _multiply_duration(dur_sec, play_count)
+            dur_excel = _seconds_to_excel_time(dur_sec)
+            total_excel = _seconds_to_excel_time(dur_sec * play_count)
+            time_fmt = 'h:mm:ss'
 
             row_values = [
                 prog_name if t_idx == 0 else "",    # 1. Наименование передачи
@@ -217,9 +223,9 @@ def create_rao_report(
                 title,                                # 3. Название произведения
                 composer,                             # 4. Композитор
                 lyricist,                             # 5. Автор текста
-                dur_str,                              # 6. Длительность
+                dur_excel,                            # 6. Длительность (Excel time)
                 play_count,                           # 7. Кол-во исполнений
-                total_str,                            # 8. Общий хронометраж
+                total_excel,                          # 8. Общий хронометраж (Excel time)
                 genre,                                # 9. Жанр
                 performer,                            # 10. Исполнитель
             ]
@@ -230,6 +236,9 @@ def create_rao_report(
                 cell.font = font_main
                 cell.alignment = align_top_center if col_i in (1, 5, 6, 7) else align_top_left
                 cell.border = border_all
+                # Формат времени для колонок длительности и хронометража
+                if col_i in (5, 7):
+                    cell.number_format = time_fmt
 
             data_row += 1
 
