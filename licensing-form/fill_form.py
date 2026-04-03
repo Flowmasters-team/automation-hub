@@ -242,6 +242,81 @@ def create_rao_report(
 
             data_row += 1
 
+    # --- Пустая строка-разделитель ---
+    for col_i in range(len(RAO_COLUMNS)):
+        col_idx = col_offset + 1 + col_i
+        ws.cell(row=data_row, column=col_idx).border = border_all
+    data_row += 2
+
+    # --- Правила заполнения отчета ---
+    rules_start = data_row
+    ws.merge_cells(start_row=rules_start, start_column=4, end_row=rules_start, end_column=13)
+    ws.cell(row=rules_start, column=4, value="Правила заполнения отчета:").font = font_bold
+
+    rules = [
+        "* Приложение № 1 заполняется для произведений, используемых в передачах, анонсах, в качестве музыкального оформления, заставках и т.п.;",
+        "* данные по анонсам предоставляются отдельным отчетом по форме Приложения № 1;",
+        "* отчет составляется на бумажном носителе (рукописное заполнение не допускается) и в электронном виде;",
+        "* форма отчета не подлежит корректировке, дополнение и удаление граф не допускается; все графы формы обязательны к заполнению, в случае если в передаче используется фрагмент фильма без музыки, необходимо это указать;",
+        "* информация в отчете указывается в строгом соответствии с наименованием граф;",
+        "* отчет сортируется в алфавитном порядке по названию передачи, а внутри передачи - по музыкальным произведениям;",
+        "* отчет заполняется на русском языке с использованием кириллицы, использование латинских букв при написании российских произведений и авторов не допускается;",
+        "* для произведений авторов-субъектов РФ, при указании данных на языке оригинала (национальном языке) в скобках в обязательном порядке указывается перевод на русский язык;",
+        "* для произведений иностранных авторов данные указываются на языке оригинала и без сокращений;",
+        "* отчет составляется с использованием шрифта размером не менее 12 пунктов;",
+        "* все страницы отчета должны быть пронумерованы и заверены печатью и подписью.",
+    ]
+
+    font_rules = Font(name="Times New Roman", size=9)
+    for i, rule in enumerate(rules):
+        r = rules_start + 1 + i
+        ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=13)
+        cell = ws.cell(row=r, column=4, value=rule)
+        cell.font = font_rules
+        cell.alignment = align_top_left
+
+    data_row = rules_start + len(rules) + 3
+
+    # --- Боковые подписи: ОБЩЕСТВО / ПОЛЬЗОВАТЕЛЬ ---
+    # ОБЩЕСТВО (левый край, на уровне шапки)
+    ws.merge_cells(start_row=6, start_column=1, end_row=11, end_column=1)
+    cell_o = ws.cell(row=6, column=1, value="ОБЩЕСТВО")
+    cell_o.font = font_main
+    cell_o.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+
+    ws.merge_cells(start_row=6, start_column=2, end_row=13, end_column=2)
+    ws.cell(row=6, column=2, value="(И.А.Базилевский)").font = font_main
+
+    # ПОЛЬЗОВАТЕЛЬ (левый край, на уровне подписей)
+    ws.merge_cells(start_row=data_row, start_column=2, end_row=data_row + 5, end_column=2)
+    ws.cell(row=data_row, column=2, value="ПОЛЬЗОВАТЕЛЬ").font = font_main
+
+    # М.П. слева
+    ws.cell(row=data_row, column=1, value="М.П.").font = font_main
+    ws.merge_cells(start_row=data_row + 1, start_column=2, end_row=data_row + 6, end_column=2)
+    ws.cell(row=data_row + 1, column=2, value="(                           )").font = font_main
+
+    # --- Подписи внизу ---
+    sign_row = data_row + 8
+    ws.merge_cells(start_row=sign_row, start_column=4, end_row=sign_row, end_column=5)
+    ws.cell(row=sign_row, column=4, value="                      М.П. _________________").font = font_main
+
+    ws.merge_cells(start_row=sign_row, start_column=6, end_row=sign_row, end_column=7)
+    ws.cell(row=sign_row, column=6, value="_____________________").font = font_main
+
+    ws.merge_cells(start_row=sign_row, start_column=8, end_row=sign_row, end_column=9)
+    ws.cell(row=sign_row, column=8, value="Дата_____________").font = font_main
+
+    # Подписи под линиями
+    ws.merge_cells(start_row=sign_row + 1, start_column=4, end_row=sign_row + 1, end_column=5)
+    ws.cell(row=sign_row + 1, column=4, value="   (подпись)").font = font_main
+
+    ws.merge_cells(start_row=sign_row + 1, start_column=6, end_row=sign_row + 1, end_column=7)
+    ws.cell(row=sign_row + 1, column=6, value="          (должность, ФИО руководителя)").font = font_main
+
+    # М.П. в шапке
+    ws.cell(row=6, column=1, value="М.П.").font = font_main
+
     # --- Сохранение ---
     wb.save(output_path)
     return output_path
