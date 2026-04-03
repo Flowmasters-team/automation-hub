@@ -6,6 +6,7 @@ GUI-приложение: Отчёт РАО — автозаполнение м�
 Собирается в .exe через PyInstaller (см. build.bat).
 """
 
+import json
 import os
 import sys
 import re
@@ -25,8 +26,10 @@ except ImportError:
 
 from extract_metadata import extract_metadata
 from fill_form import create_rao_report
-from tag_lookup import lookup_track
+from tag_lookup import lookup_track, lookup_cascade
 from fingerprint_lookup import lookup_by_fingerprint, is_available as fpcalc_available
+from session_manager import save_session, load_session, list_sessions
+from composer_db import lookup as db_lookup_composer, save_many as db_save_composers
 
 # Календарик для даты
 try:
@@ -53,6 +56,23 @@ MONTHS_RU = [
 OPERATORS = ["СОШЕНКО", "ВАНЕЕВ", "ШАХОВ"]
 
 
+def _templates_path() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "templates.json")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates.json")
+
+def _load_templates() -> list[str]:
+    try:
+        with open(_templates_path(), "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def _save_templates(templates: list[str]):
+    with open(_templates_path(), "w", encoding="utf-8") as f:
+        json.dump(templates, f, ensure_ascii=False, indent=2)
+
+
 class ProgramFrame:
     """Фрейм одной передачи с треками."""
 
@@ -70,7 +90,11 @@ class ProgramFrame:
 
         ttk.Label(params, text="Название:").pack(side="left")
         self.name_var = tk.StringVar()
-        ttk.Entry(params, textvariable=self.name_var, width=40).pack(side="left", padx=(5, 15))
+        self.name_combo = ttk.Combobox(
+            params, textvariable=self.name_var, values=_load_templates(), width=37,
+        )
+        self.name_combo.pack(side="left", padx=(5, 3))
+        ttk.Button(params, text="+", width=2, command=self._save_template).pack(side="left", padx=(0, 15))
 
         ttk.Label(params, text="Дата эфира:").pack(side="left")
         self.date_var = tk.StringVar(value=datetime.now().strftime("%d.%m.%y"))
@@ -291,14 +315,10 @@ class ProgramFrame:
             for idx, (track_idx, track) in enumerate(targets):
                 title = track.get("title", "")
                 artist_hint = track.get("artist", "")
-                result = lookup_track(title, artist_hint)
-                if result.get("composer") or result.get("artist"):
+                result = lookup_cascade(title, artist_hint)
+                if result.get("composer"):
+                    self.tracks[track_idx]["composer"] = result["composer"]
                     found += 1
-                    if result.get("composer"):
-                        self.tracks[track_idx]["composer"] = result["composer"]
-                        self.tracks[track_idx]["artist"] = result["composer"]
-                    elif result.get("artist"):
-                        self.tracks[track_idx]["artist"] = result["artist"]
                 # Update status from main thread
                 done = idx + 1
                 total = len(targets)
@@ -430,6 +450,11 @@ class ProgramFrame:
                 continue
             meta = extract_metadata(fpath)
             meta["play_count"] = 1
+            # Auto-fill composer from database
+            if not meta.get("composer"):
+                db_composer = db_lookup_composer(meta.get("title", ""), meta.get("artist", ""))
+                if db_composer:
+                    meta["composer"] = db_composer
             self.tracks.append(meta)
             added += 1
         if added > 0:
@@ -443,6 +468,18 @@ class ProgramFrame:
 
     def _remove(self):
         self.app.remove_program(self.index)
+
+    def _save_template(self):
+        """Save current program name to templates."""
+        name = self.name_var.get().strip()
+        if not name:
+            return
+        templates = _load_templates()
+        if name not in templates:
+            templates.append(name)
+            _save_templates(templates)
+            for pf in self.app.programs:
+                pf.name_combo["values"] = templates
 
     def _refresh_table(self):
         self.tree.delete(*self.tree.get_children())
@@ -518,11 +555,15 @@ class RaoReportApp:
 
         self._build_ui()
         self._add_program()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         if len(sys.argv) > 1:
             files = [f for f in sys.argv[1:] if os.path.isfile(f)]
             if files and self.programs:
                 self.programs[0]._add_files(files)
+
+        # Offer to load a previous session
+        self.root.after(100, self._offer_load_session)
 
     def _build_ui(self):
         # --- Верхняя панель ---
@@ -580,6 +621,11 @@ class RaoReportApp:
             if bbox and bbox[3] > self.canvas.winfo_height():
                 self.canvas.yview_scroll(-1 * (e.delta // 120), "units")
         self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # Hotkeys
+        self.root.bind_all("<Control-s>", lambda e: self._generate_report())
+        self.root.bind_all("<Control-n>", lambda e: self._add_program())
+        self.root.bind_all("<Delete>", self._delete_selected_track)
 
         # --- Подвал ---
         bottom = ttk.Frame(self.root)
@@ -651,6 +697,13 @@ class RaoReportApp:
                 all_programs, output_path,
                 month=month_upper, year=year,
             )
+            # Save composers to database for future auto-fill
+            all_tracks = []
+            for prog in all_programs:
+                for t in prog["tracks"]:
+                    all_tracks.append(t)
+            db_save_composers(all_tracks)
+
             self.status_var.set(f"Отчёт сохранён: {output_path}")
             messagebox.showinfo(
                 "Готово!",
@@ -663,6 +716,117 @@ class RaoReportApp:
                 os.startfile(output_path)
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось сохранить отчёт:\n{e}")
+
+    def _on_close(self):
+        """Prompt to save session on exit."""
+        if any(pf.total_tracks() > 0 for pf in self.programs):
+            answer = messagebox.askyesnocancel(
+                "Сохранить сессию?",
+                "Сохранить текущую сессию перед выходом?",
+            )
+            if answer is None:  # Cancel
+                return
+            if answer:  # Yes
+                self._save_current_session()
+        self.root.destroy()
+
+    def _save_current_session(self):
+        """Save current state to JSON."""
+        operator = self.operator_var.get()
+        month = self.month_var.get()
+        year = self.year_var.get()
+        programs_data = []
+        for pf in self.programs:
+            programs_data.append({
+                "name": pf.name_var.get().strip(),
+                "date": pf.get_date(),
+                "tracks": [
+                    {
+                        "title": t.get("title", ""),
+                        "artist": t.get("artist", ""),
+                        "composer": t.get("composer", ""),
+                        "duration": t.get("duration", ""),
+                        "duration_seconds": t.get("duration_seconds", 0),
+                        "play_count": t.get("play_count", 1),
+                        "filepath": t.get("filepath", ""),
+                        "filename": t.get("filename", ""),
+                    }
+                    for t in pf.tracks
+                ],
+            })
+        path = save_session(operator, month, year, programs_data)
+        self.status_var.set(f"Сессия сохранена: {path}")
+
+    def _offer_load_session(self):
+        """Show dialog to load a previous session on startup."""
+        sessions = list_sessions()
+        if not sessions:
+            return
+        names = [f"{s['operator']} — {s['month']} {s['year']} ({s['programs_count']} перед.)" for s in sessions]
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Загрузить сессию")
+        dialog.geometry("400x300")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Доступные сессии:").pack(pady=(10, 5))
+        listbox = tk.Listbox(dialog, height=10)
+        for name in names:
+            listbox.insert(tk.END, name)
+        listbox.pack(fill="both", expand=True, padx=10)
+
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(fill="x", padx=10, pady=10)
+
+        def load_selected():
+            sel = listbox.curselection()
+            if sel:
+                self._load_session(sessions[sel[0]]["filepath"])
+            dialog.destroy()
+
+        ttk.Button(btn_frame, text="Загрузить", command=load_selected).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Новая сессия", command=dialog.destroy).pack(side="right", padx=5)
+
+    def _load_session(self, filepath: str):
+        """Load session from file, replacing current state."""
+        data = load_session(filepath)
+        self.operator_var.set(data.get("operator", OPERATORS[0]))
+        self.month_var.set(data.get("month", MONTHS_RU[0]))
+        self.year_var.set(data.get("year", datetime.now().strftime("%Y")))
+
+        # Remove all current programs
+        for pf in self.programs[:]:
+            pf.frame.destroy()
+        self.programs.clear()
+
+        # Create programs from session
+        for prog_data in data.get("programs", []):
+            self._add_program()
+            pf = self.programs[-1]
+            pf.name_var.set(prog_data.get("name", ""))
+            pf.date_var.set(prog_data.get("date", ""))
+            for t in prog_data.get("tracks", []):
+                t.setdefault("play_count", 1)
+                pf.tracks.append(t)
+            pf._refresh_table()
+
+        if not self.programs:
+            self._add_program()
+        self.update_status()
+        self.status_var.set(f"Сессия загружена: {os.path.basename(filepath)}")
+
+    def _delete_selected_track(self, event=None):
+        """Delete selected track from the focused program's table."""
+        focus = self.root.focus_get()
+        for pf in self.programs:
+            if pf.tree == focus or (focus and str(focus).startswith(str(pf.tree))):
+                selected = pf.tree.selection()
+                if selected:
+                    for idx in sorted([pf.tree.index(item) for item in selected], reverse=True):
+                        pf.tracks.pop(idx)
+                    pf._refresh_table()
+                    self.update_status()
+                return
 
 
 def main():
