@@ -7,6 +7,7 @@ AcoustID fingerprint lookup — определение трека по ауди�
 
 import json
 import os
+import sys
 import subprocess
 import shutil
 import urllib.parse
@@ -22,13 +23,20 @@ USER_AGENT = "RAO_Report/1.0 (flowmasters.ru)"
 
 def _find_fpcalc() -> str | None:
     """Ищет fpcalc в PATH и стандартных местах."""
+    # Внутри PyInstaller bundle
+    if getattr(sys, '_MEIPASS', None):
+        bundled = os.path.join(sys._MEIPASS, "fpcalc.exe")
+        if os.path.isfile(bundled):
+            return bundled
+
     # В PATH
     found = shutil.which("fpcalc") or shutil.which("fpcalc.exe")
     if found:
         return found
 
     # Рядом с exe / скриптом
-    for base in [os.path.dirname(os.path.abspath(__file__)), os.getcwd()]:
+    exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    for base in [exe_dir, os.path.dirname(os.path.abspath(__file__)), os.getcwd()]:
         for name in ["fpcalc.exe", "fpcalc"]:
             path = os.path.join(base, name)
             if os.path.isfile(path):

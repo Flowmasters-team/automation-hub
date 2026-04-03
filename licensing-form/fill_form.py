@@ -117,7 +117,7 @@ def create_rao_report(
     align_top_center = Alignment(horizontal="center", vertical="top", wrap_text=True)
     # Два направления вертикального текста
     align_vert_up = Alignment(text_rotation=90, horizontal="center", vertical="center", wrap_text=True)    # снизу вверх (ОБЩЕСТВО)
-    align_vert_down = Alignment(text_rotation=255, horizontal="center", vertical="center", wrap_text=True)  # сверху вниз (остальные)
+    align_vert_down = Alignment(text_rotation=180, horizontal="center", vertical="center", wrap_text=True)  # сверху вниз (М.П., Базилевский)
     thin = Side(style="thin")
     border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
     border_left = Border(left=thin)
