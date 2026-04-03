@@ -414,7 +414,7 @@ class ProgramFrame:
     def get_program_data(self):
         program_tracks = []
         for t in self.tracks:
-            composer = t.get("artist", "") or t.get("composer", "")
+            composer = t.get("composer", "")
             program_tracks.append({
                 "title": t.get("title", ""),
                 "composer": composer,
@@ -527,7 +527,12 @@ class RaoReportApp:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-        self.canvas.bind_all("<MouseWheel>", lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+        def _on_mousewheel(e):
+            # Скроллить только если контент больше видимой области
+            bbox = self.canvas.bbox("all")
+            if bbox and bbox[3] > self.canvas.winfo_height():
+                self.canvas.yview_scroll(-1 * (e.delta // 120), "units")
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
         # --- Подвал ---
         bottom = ttk.Frame(self.root)

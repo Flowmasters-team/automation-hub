@@ -53,6 +53,23 @@ def _lookup_work_composer(work_id: str) -> str:
     return _extract_composer_from_relations(relations)
 
 
+def _build_queries(title: str, artist: str) -> list[str]:
+    """Генерирует варианты поисковых запросов от точного к широкому."""
+    queries = []
+    if artist:
+        # 1. Точный: "title" AND artist:"artist"
+        queries.append(f'recording:"{title}" AND artist:"{artist}"')
+        # 2. Без кавычек у artist
+        queries.append(f'recording:"{title}" AND artist:{artist}')
+        # 3. Просто title + artist как текст
+        queries.append(f'{artist} {title}')
+    # 4. Только title в кавычках
+    queries.append(f'recording:"{title}"')
+    # 5. Просто title как текст
+    queries.append(title)
+    return queries
+
+
 def lookup_track(title: str, artist: str = "") -> dict:
     """
     Search MusicBrainz for a recording by title (and optionally artist).
@@ -64,19 +81,20 @@ def lookup_track(title: str, artist: str = "") -> dict:
     if not title or not title.strip():
         return {"composer": "", "artist": ""}
 
-    query_parts = [f'recording:"{title.strip()}"']
-    if artist and artist.strip():
-        query_parts.append(f'artist:"{artist.strip()}"')
+    title_clean = title.strip()
+    artist_clean = artist.strip() if artist else ""
 
-    query = " AND ".join(query_parts)
-    params = urllib.parse.urlencode({"query": query, "limit": 5, "fmt": "json"})
-    url = f"{MB_BASE}/recording?{params}"
+    # Пробуем несколько стратегий поиска
+    recordings = []
+    for query in _build_queries(title_clean, artist_clean):
+        params = urllib.parse.urlencode({"query": query, "limit": 5, "fmt": "json"})
+        url = f"{MB_BASE}/recording?{params}"
+        data = _get(url)
+        if data:
+            recordings = data.get("recordings", [])
+            if recordings:
+                break
 
-    data = _get(url)
-    if not data:
-        return {"composer": "", "artist": ""}
-
-    recordings = data.get("recordings", [])
     if not recordings:
         return {"composer": "", "artist": ""}
 
