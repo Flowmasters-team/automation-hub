@@ -2,6 +2,7 @@
 GUI-приложение: Отчёт РАО — автозаполнение музыкальной формы ВГТРК.
 
 Несколько передач в одном отчёте за месяц. Выбор оператора (Сошенко/Ванеев/Шахов).
+Кол-во исполнений задаётся для каждого трека отдельно (стрелки влево/вправо).
 Собирается в .exe через PyInstaller (см. build.bat).
 """
 
@@ -39,7 +40,7 @@ class ProgramFrame:
     def __init__(self, parent, app, index):
         self.app = app
         self.index = index
-        self.tracks = []
+        self.tracks = []  # каждый трек: dict с метаданными + "play_count"
 
         self.frame = ttk.LabelFrame(parent, text=f"Передача {index + 1}", padding=5)
         self.frame.pack(fill="both", expand=True, pady=(0, 5))
@@ -50,15 +51,11 @@ class ProgramFrame:
 
         ttk.Label(params, text="Название:").pack(side="left")
         self.name_var = tk.StringVar()
-        ttk.Entry(params, textvariable=self.name_var, width=35).pack(side="left", padx=(5, 15))
+        ttk.Entry(params, textvariable=self.name_var, width=40).pack(side="left", padx=(5, 15))
 
         ttk.Label(params, text="Дата эфира:").pack(side="left")
         self.date_var = tk.StringVar(value=datetime.now().strftime("%d.%m.%y"))
-        ttk.Entry(params, textvariable=self.date_var, width=10).pack(side="left", padx=(5, 15))
-
-        ttk.Label(params, text="Кол-во исп.:").pack(side="left")
-        self.play_count_var = tk.StringVar(value="1")
-        ttk.Entry(params, textvariable=self.play_count_var, width=4).pack(side="left", padx=(5, 10))
+        ttk.Entry(params, textvariable=self.date_var, width=10).pack(side="left", padx=(5, 10))
 
         ttk.Button(params, text="Удалить передачу", command=self._remove).pack(side="right")
 
@@ -72,14 +69,14 @@ class ProgramFrame:
         ttk.Button(btn_frame, text="Очистить треки", command=self._clear_tracks).pack(side="left", padx=5)
 
         # --- Таблица ---
-        columns = ("num", "title", "composer", "duration", "filename")
+        columns = ("num", "title", "composer", "duration", "plays", "filename")
         tree_frame = ttk.Frame(self.frame)
         tree_frame.pack(fill="both", expand=True)
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical")
         self.tree = ttk.Treeview(
             tree_frame, columns=columns, show="headings",
-            yscrollcommand=scrollbar.set, selectmode="extended", height=5,
+            yscrollcommand=scrollbar.set, selectmode="extended", height=6,
         )
         scrollbar.config(command=self.tree.yview)
         scrollbar.pack(side="right", fill="y")
@@ -89,21 +86,47 @@ class ProgramFrame:
         self.tree.heading("title", text="Название")
         self.tree.heading("composer", text="Композитор")
         self.tree.heading("duration", text="Длительность")
+        self.tree.heading("plays", text="Исп.")
         self.tree.heading("filename", text="Файл")
 
         self.tree.column("num", width=30, anchor="center")
         self.tree.column("title", width=220)
         self.tree.column("composer", width=180)
         self.tree.column("duration", width=80, anchor="center")
+        self.tree.column("plays", width=45, anchor="center")
         self.tree.column("filename", width=200)
 
-        # Двойной клик для редактирования
+        # Двойной клик для редактирования текстовых полей
         self.tree.bind("<Double-1>", self._on_double_click)
+        # Стрелки влево/вправо для изменения кол-ва исполнений
+        self.tree.bind("<Right>", self._play_count_up)
+        self.tree.bind("<Left>", self._play_count_down)
 
         # Drag-and-drop
         if DND_AVAILABLE:
             self.tree.drop_target_register(DND_FILES)
             self.tree.dnd_bind("<<Drop>>", self._on_drop)
+
+    def _play_count_up(self, event):
+        """Стрелка вправо — увеличить кол-во исполнений выделенного трека."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+        for item in selected:
+            idx = self.tree.index(item)
+            self.tracks[idx]["play_count"] = self.tracks[idx].get("play_count", 1) + 1
+        self._refresh_table()
+
+    def _play_count_down(self, event):
+        """Стрелка влево — уменьшить кол-во исполнений (минимум 1)."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+        for item in selected:
+            idx = self.tree.index(item)
+            current = self.tracks[idx].get("play_count", 1)
+            self.tracks[idx]["play_count"] = max(1, current - 1)
+        self._refresh_table()
 
     def _on_double_click(self, event):
         """Редактирование ячейки по двойному клику."""
@@ -112,13 +135,16 @@ class ProgramFrame:
         if not item or not col:
             return
         col_idx = int(col.replace("#", "")) - 1
-        # Разрешаем редактировать: title(1), composer(2), duration(3)
-        editable = {1: "title", 2: "composer", 3: "duration"}
+        # Разрешаем редактировать: title(1), composer(2), duration(3), plays(4)
+        editable = {1: "title", 2: "composer", 3: "duration", 4: "play_count"}
         if col_idx not in editable:
             return
 
         # Координаты ячейки
-        x, y, w, h = self.tree.bbox(item, col)
+        bbox = self.tree.bbox(item, col)
+        if not bbox:
+            return
+        x, y, w, h = bbox
         value = self.tree.item(item, "values")[col_idx]
 
         entry = tk.Entry(self.tree, width=w // 8)
@@ -141,13 +167,17 @@ class ProgramFrame:
                 track["composer"] = new_val
             elif field == "duration":
                 track["duration"] = new_val
-                # Пробуем пересчитать секунды из M:SS или H:MM:SS
                 try:
                     parts = new_val.split(":")
                     if len(parts) == 3:
                         track["duration_seconds"] = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
                     elif len(parts) == 2:
                         track["duration_seconds"] = int(parts[0]) * 60 + int(parts[1])
+                except ValueError:
+                    pass
+            elif field == "play_count":
+                try:
+                    track["play_count"] = max(1, int(new_val))
                 except ValueError:
                     pass
             self._refresh_table()
@@ -194,6 +224,7 @@ class ProgramFrame:
             if any(t["filepath"] == os.path.abspath(fpath) for t in self.tracks):
                 continue
             meta = extract_metadata(fpath)
+            meta["play_count"] = 1  # по умолчанию 1 исполнение
             self.tracks.append(meta)
             added += 1
         if added > 0:
@@ -218,22 +249,21 @@ class ProgramFrame:
         self.app.remove_program(self.index)
 
     def _refresh_table(self):
+        # Запомним выделение
+        sel_indices = [self.tree.index(s) for s in self.tree.selection()]
         self.tree.delete(*self.tree.get_children())
         for i, t in enumerate(self.tracks, 1):
             composer = t.get("artist", "") or t.get("composer", "")
-            self.tree.insert("", "end", values=(
+            plays = t.get("play_count", 1)
+            iid = self.tree.insert("", "end", values=(
                 i, t.get("title", ""), composer,
-                t.get("duration", ""), t.get("filename", ""),
+                t.get("duration", ""), plays, t.get("filename", ""),
             ))
+            # Восстановить выделение
+            if (i - 1) in sel_indices:
+                self.tree.selection_add(iid)
 
-    def get_program_data(self, play_count_override=None):
-        play_count = play_count_override
-        if play_count is None:
-            try:
-                play_count = int(self.play_count_var.get().strip())
-            except ValueError:
-                play_count = 1
-
+    def get_program_data(self):
         program_tracks = []
         for t in self.tracks:
             composer = t.get("artist", "") or t.get("composer", "")
@@ -242,7 +272,7 @@ class ProgramFrame:
                 "composer": composer,
                 "lyricist": "",
                 "duration_seconds": t.get("duration_seconds", 0),
-                "play_count": play_count,
+                "play_count": t.get("play_count", 1),
                 "genre": "пьеса",
                 "performer": "инстр. Анс",
             })
@@ -280,8 +310,15 @@ class RaoReportApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Отчёт РАО — ВГТРК")
-        self.root.geometry("950x700")
-        self.root.minsize(800, 550)
+        # Окно на весь экран, но не полноэкранное
+        screen_w = root.winfo_screenwidth()
+        screen_h = root.winfo_screenheight()
+        w = min(1200, screen_w - 100)
+        h = min(850, screen_h - 100)
+        x = (screen_w - w) // 2
+        y = (screen_h - h) // 2
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.minsize(900, 600)
 
         self.programs = []  # list of ProgramFrame
 
@@ -327,37 +364,47 @@ class RaoReportApp:
         ttk.Button(btn_bar, text="+ Добавить передачу", command=self._add_program).pack(side="left")
 
         # --- Контейнер для передач (с прокруткой) ---
-        self.canvas = tk.Canvas(self.root)
-        self.scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        mid_frame = ttk.Frame(self.root)
+        mid_frame.pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+        self.canvas = tk.Canvas(mid_frame)
+        self.scrollbar = ttk.Scrollbar(mid_frame, orient="vertical", command=self.canvas.yview)
         self.programs_frame = ttk.Frame(self.canvas)
 
         self.programs_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
         )
-        self.canvas.create_window((0, 0), window=self.programs_frame, anchor="nw")
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.programs_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=(0, 5))
-        self.scrollbar.pack(side="left", fill="y", pady=(0, 5), padx=(0, 10))
+        # Подгонять ширину внутреннего фрейма под canvas
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width))
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
 
         # Прокрутка колёсиком
         self.canvas.bind_all("<MouseWheel>", lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
 
-        # --- Низ: статус + кнопка ---
+        # --- Подвал: статус + кнопка сохранения ---
         bottom = ttk.Frame(self.root)
-        bottom.pack(fill="x", padx=10, pady=(0, 10))
+        bottom.pack(fill="x", padx=10, pady=(5, 10), side="bottom")
 
         self.status_var = tk.StringVar(value="Добавьте передачи и аудиофайлы")
         ttk.Label(bottom, textvariable=self.status_var).pack(side="left")
 
-        ttk.Button(bottom, text="Сохранить отчёт (.xlsx)", command=self._generate_report).pack(side="right")
+        save_btn = ttk.Button(bottom, text="Сохранить отчёт (.xlsx)", command=self._generate_report)
+        save_btn.pack(side="right", ipadx=10, ipady=4)
 
     def _add_program(self):
         idx = len(self.programs)
         pf = ProgramFrame(self.programs_frame, self, idx)
         self.programs.append(pf)
         self.update_status()
+        # Прокрутить вниз к новой передаче
+        self.root.update_idletasks()
+        self.canvas.yview_moveto(1.0)
 
     def remove_program(self, index):
         if len(self.programs) <= 1:
@@ -366,7 +413,6 @@ class RaoReportApp:
         pf = self.programs[index]
         pf.frame.destroy()
         self.programs.pop(index)
-        # Перенумеровать
         for i, p in enumerate(self.programs):
             p.index = i
             p.frame.config(text=f"Передача {i + 1}")
