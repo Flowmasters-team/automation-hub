@@ -147,3 +147,25 @@ def lookup_track(title: str, artist: str = "") -> dict:
         "composer": composer_name,
         "artist": artist_name,
     }
+
+
+def lookup_cascade(title: str, artist: str = "") -> dict:
+    """
+    3-tier composer search: local DB → Genius → MusicBrainz.
+    Returns dict with composer, artist keys.
+    """
+    from composer_db import lookup as db_lookup
+    from genius_lookup import lookup_genius
+
+    # 1. Local database
+    composer = db_lookup(title, artist)
+    if composer:
+        return {"composer": composer, "artist": artist}
+
+    # 2. Genius API
+    result = lookup_genius(title, artist)
+    if result.get("composer"):
+        return result
+
+    # 3. MusicBrainz (existing)
+    return lookup_track(title, artist)
