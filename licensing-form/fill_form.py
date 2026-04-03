@@ -127,9 +127,9 @@ def create_rao_report(
     MIN_EMPTY_ROWS = 30  # минимум пустых строк после данных (как в оригинале)
 
     # --- Ширины колонок ---
-    ws.column_dimensions["A"].width = 3
-    ws.column_dimensions["B"].width = 5
-    ws.column_dimensions["C"].width = 5
+    ws.column_dimensions["A"].width = 4
+    ws.column_dimensions["B"].width = 4
+    ws.column_dimensions["C"].width = 4
     for i, (_, w) in enumerate(RAO_COLUMNS):
         col_letter = chr(ord("D") + i)
         ws.column_dimensions[col_letter].width = w
@@ -293,7 +293,7 @@ def create_rao_report(
             cell.border = border_lr
 
     # ============================================================
-    # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (колонки A-B, вверху)
+    # БОКОВЫЕ ПОДПИСИ: ОБЩЕСТВО (вверху, как в оригинале)
     # ============================================================
     # Колонка A: "ОБЩЕСТВО" вертикально (строки 2-6)
     ws.merge_cells(start_row=2, start_column=1, end_row=6, end_column=1)
@@ -301,38 +301,50 @@ def create_rao_report(
     cell_o.font = font_side
     cell_o.alignment = align_vertical
 
-    # Колонка B: "ОБЩЕСТВО" вертикально (дубль, как в оригинале, строки 2-6)
+    # Колонка B: "ОБЩЕСТВО" вертикально (строки 2-6)
     ws.merge_cells(start_row=2, start_column=2, end_row=6, end_column=2)
     cell_o2 = ws.cell(row=2, column=2, value="ОБЩЕСТВО")
     cell_o2.font = font_side
     cell_o2.alignment = align_vertical
 
-    # М.П. (строка 7, колонка 1)
+    # Увеличиваем высоту строк 2-6 чтобы вертикальный текст поместился
+    for r in range(2, 7):
+        ws.row_dimensions[r].height = 20
+
+    # М.П. (строка 7)
     ws.cell(row=7, column=1, value="М.П.").font = font_main
 
-    # Колонка C: "(И.А.Базилевский)" вертикально (строки 8-13)
-    ws.merge_cells(start_row=8, start_column=3, end_row=13, end_column=3)
-    cell_baz = ws.cell(row=8, column=3, value="(И.А.Базилевский)")
+    # Строка 8: М.П. в колонке B (как в оригинале — рядом с ОТЧЕТ)
+    ws.cell(row=8, column=2, value="М.П.").font = font_main
+
+    # Колонка C: "(И.А.Базилевский)" вертикально (строки 9-13, рядом с заголовками таблицы)
+    ws.merge_cells(start_row=9, start_column=3, end_row=13, end_column=3)
+    cell_baz = ws.cell(row=9, column=3, value="(И.А.Базилевский)")
     cell_baz.font = font_main
     cell_baz.alignment = align_vertical
 
     # ============================================================
-    # БОКОВЫЕ ПОДПИСИ: ПОЛЬЗОВАТЕЛЬ (колонки A-B, внизу)
+    # БОКОВЫЕ ПОДПИСИ: ПОЛЬЗОВАТЕЛЬ (внизу, как в оригинале)
     # ============================================================
-    # ПОЛЬЗОВАТЕЛЬ — 7 строк, начиная за 4 строки до rules_start
-    footer_side_start = rules_start - 4
-    ws.merge_cells(start_row=footer_side_start, start_column=1, end_row=footer_side_start + 6, end_column=1)
+    # ПОЛЬЗОВАТЕЛЬ вертикально — 8 строк перед правилами
+    footer_side_start = rules_start - 6
+    ws.merge_cells(start_row=footer_side_start, start_column=1, end_row=footer_side_start + 8, end_column=1)
     cell_p = ws.cell(row=footer_side_start, column=1, value="ПОЛЬЗОВАТЕЛЬ")
     cell_p.font = font_side
     cell_p.alignment = align_vertical
 
+    # БАЗИЛЕВСКИЙ в колонке B вертикально (рядом с ПОЛЬЗОВАТЕЛЬ)
+    ws.merge_cells(start_row=footer_side_start, start_column=2, end_row=footer_side_start + 8, end_column=2)
+    cell_baz2 = ws.cell(row=footer_side_start, column=2, value="БАЗИЛЕВСКИЙ")
+    cell_baz2.font = font_side
+    cell_baz2.alignment = align_vertical
+
     # М.П. (под ПОЛЬЗОВАТЕЛЬ)
-    mp_row = footer_side_start + 7
+    mp_row = footer_side_start + 9
     ws.cell(row=mp_row, column=1, value="М.П.").font = font_main
 
     # (                           ) в колонке B
-    ws.merge_cells(start_row=mp_row, start_column=2, end_row=mp_row + 2, end_column=2)
-    ws.cell(row=mp_row, column=2, value="(                           )").font = font_main
+    ws.cell(row=mp_row + 1, column=1, value="(                           )").font = font_main
 
     # ============================================================
     # ПОДПИСИ ВНИЗУ
